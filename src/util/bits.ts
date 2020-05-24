@@ -16,7 +16,7 @@ const BIT_14 = 1 << 0xE;
 const BIT_15 = 1 << 0xF;
 const BIT_16 = 1 << 0x10;
 
-function bit_get(val: number, bit: number) {
+function bit_test(val: number, bit: number) {
     return (val & (1 << bit)) !== 0;
 }
 

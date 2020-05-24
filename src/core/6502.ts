@@ -1,5 +1,12 @@
+const debug = true;
+
 function cpu_execute(nes: NES): void {
     const opcode = cpu_read_tick(nes, nes.reg_pc);
+
+    if (debug) {
+        console.log(`PC: ${hex(nes.reg_pc, 4)}`);
+        console.log(hex(opcode, 2));
+    }
 
     switch (opcode & 0b11) {
         case 0b01:
@@ -18,11 +25,11 @@ function cpu_execute(nes: NES): void {
 }
 
 function cpu_read_tick(nes: NES, addr: number): number {
-
+    return mem_read(nes, addr);
 }
 
 function cpu_write_tick(nes: NES, addr: number, val: number): void {
-
+    mem_write(nes, addr, val);
 }
 
 // #region Read addressing modes
@@ -72,7 +79,7 @@ function cpu_read_addressing_01(nes: NES, opcode: number): number {
         case 0b101: // zero page,X 
             {
                 const zeroPageIndex = cpu_read_tick(nes, (nes.reg_pc + 1) & 0xFFFF);
-                
+                return cpu_read_zeropage_x(nes, zeroPageIndex);
             }
     }
 }

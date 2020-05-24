@@ -3,6 +3,8 @@
         "src/core/**.js": true
     },
     "files.exclude": {
-        "src/core/*.js": true
+        "src/core/*.js": true,
+        "src/util/*.js": true,
+        "src/nes-handler.js": true,
     }
 }
