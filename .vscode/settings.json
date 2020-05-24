@@ -1,0 +1,8 @@
+{
+    "search.exclude": {
+        "src/core/**.js": true
+    },
+    "files.exclude": {
+        "src/core/*.js": true
+    }
+}
