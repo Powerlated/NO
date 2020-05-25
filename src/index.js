@@ -1,11 +1,23 @@
-let req = new XMLHttpRequest();
+let romReq = new XMLHttpRequest();
 
-req.onload = function (e) {
+romReq.onload = function (e) {
     /** @type {ArrayBuffer} */
-    let arrayBuffer = req.response;
+    let arrayBuffer = romReq.response;
     window.nes = new NES(parse_iNES(new Uint8Array(arrayBuffer)));
+    console.log("nestest loaded")
+    ready();
 };
-req.open("GET", 'nestest.nes');
-req.responseType = "arraybuffer";
-req.send();
+romReq.open("GET", 'nestest.nes');
+romReq.responseType = "arraybuffer";
+romReq.send();
+
+let logReq = new XMLHttpRequest();
+logReq.onload = function (e) {
+    /** @type {string} */
+    let text = logReq.responseText;
+    window.nestest_log = text.split('\n');
+};
+logReq.open("GET", 'nestest.log');
+logReq.responseType = 'text';
+logReq.send();
 

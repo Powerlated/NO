@@ -4,8 +4,8 @@ html {
 }
 
 #nes-canvas {
-    width: 512px;
-    height: 480px;
+    width: 256px;
+    height: 240px;
 
     image-rendering: -moz-crisp-edges;
     /* Firefox */

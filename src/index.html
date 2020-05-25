@@ -3,13 +3,7 @@
 <head>
     <title>NO</title>
     <link rel="stylesheet" type="text/css" href="index.css" />
-</head>
 
-<body>
-    <h1>NO - NES Optime</h1>
-    <canvas id="nes-canvas" width="256" height="240"></canvas>
-
-    
     <script src="./core/bits.js"></script>
     <script src="./core/6502.js"></script>
     <script src="./util/bits.js"></script>
@@ -17,8 +11,19 @@
     <script src="./core/nes.js"></script>
     <script src="./core/memory.js"></script>
     <script src="./core/ines.js"></script>
-    
+
     <script src="index.js"></script>
+
+</head>
+
+<body>
+    <h1>NO - NES Optime</h1>
+    <canvas id="nes-canvas" width="256" height="240"></canvas>
+
+    <div>
+        <div id="debug"></div>
+    </div>
+    
     <script src="./nes-handler.js"></script>
 </body>
 
