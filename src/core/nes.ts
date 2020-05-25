@@ -39,7 +39,21 @@ class NES {
         if (this.flag_n) val |= BIT_7; // Negative
         if (this.flag_v) val |= BIT_6; // Overflow
         val |= BIT_5; // NOP - B Flag    
-        // val |= BIT_6; // NOP - B Flag    
+        // val |= BIT_4; // NOP - B Flag    
+        if (this.flag_d) val |= BIT_3; // Decimal
+        if (this.flag_i) val |= BIT_2; // Disable Interrupts
+        if (this.flag_z) val |= BIT_1; // Zero
+        if (this.flag_c) val |= BIT_0; // Carry
+        return val;
+    }
+
+    flag_get_for_push(): number {
+        console.log("Flag for push")
+        let val = 0;
+        if (this.flag_n) val |= BIT_7; // Negative
+        if (this.flag_v) val |= BIT_6; // Overflow
+        val |= BIT_5; // NOP - B Flag    
+        val |= BIT_4; // NOP - B Flag    
         if (this.flag_d) val |= BIT_3; // Decimal
         if (this.flag_i) val |= BIT_2; // Disable Interrupts
         if (this.flag_z) val |= BIT_1; // Zero

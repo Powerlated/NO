@@ -43,6 +43,30 @@ function step() {
         errored = true;
     }
 
+    let logA = `0x${nestest_log[logLine].slice(50, 52)}`;
+    let a = hex(nes.reg_a, 2);
+    if (logA !== a) {
+        console.error(`Line ${logLine + 1}: nestest A mismatch
+        Expected: ${logA}, Actual: ${a}`);
+        errored = true;
+    }
+
+    let logX = `0x${nestest_log[logLine].slice(55, 57)}`;
+    let x = hex(nes.reg_x, 2);
+    if (logX !== x) {
+        console.error(`Line ${logLine + 1}: nestest X mismatch
+        Expected: ${logX}, Actual: ${x}`);
+        errored = true;
+    }
+    let logY = `0x${nestest_log[logLine].slice(60, 62)}`;
+    let y = hex(nes.reg_y, 2);
+    if (logY !== y) {
+        console.error(`Line ${logLine + 1}: nestest Y mismatch
+        Expected: ${logY}, Actual: ${y}`);
+        errored = true;
+    }
+
+
 
     logLine++;
 }
