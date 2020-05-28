@@ -11,9 +11,7 @@ class NES {
     reg_y = 0;
     reg_pc = 0;
     reg_sp = 0;
-
-    interrupt_disable = false;
-
+    
     flag_n = false; // Negative
     flag_v = false; // Overflow
     // ------------
