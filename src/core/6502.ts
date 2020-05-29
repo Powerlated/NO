@@ -28,8 +28,8 @@ function cpu_intr_check(nes: NES) {
     if (nes.nmi_queued) {
         nes.nmi_queued = false;
 
-        if (debug)
-            console.log("Dispatching NMI");
+        if (debug)                         
+            console.log("Dispatching NMI"); 
 
         cpu_push16(nes, nes.reg_pc);
         cpu_push8(nes, nes.flag_get_for_push());

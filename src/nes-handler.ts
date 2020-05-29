@@ -100,6 +100,7 @@ function runFrame() {
 let frame = 0;
 function updateDebug() {
     requestAnimationFrame(updateDebug);
+    // runFrame();
 
     disasmElement.innerHTML = disassemble(nes);
 

@@ -122,16 +122,32 @@ class NES {
     ppu_fetcher_state = 0;
     ppu_pattern_shift = new Uint8Array(16);
     ppu_pattern_shift_pos = 0;
-    ppu_palette_shift = new Uint8Array(8);
-    ppu_palette_shift_pos = 0;
+    ppu_attribute_shift = new Uint8Array(8);
+    ppu_attribute_shift_pos = 0;
     ppu_pixel_x = 0;
 
     ppu_nametable_index = 0;
-    ppu_nametable_byte = 0;
-    ppu_attribute_byte = 0;
+    ppu_nametable_val = 0;
+    ppu_attribute_val = 0;
+    ppu_attribute_index = 0;
     ppu_pattern_lower_byte = 0;
     ppu_pattern_upper_byte = 0;
 
+    ppu_universal_bg_col = new Uint8Array(3);
+
+    ppu_bg_palette = [
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+    ];
+
+    ppu_obj_palette = [
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+        [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
+    ];
     ppu_img = new ImageData(new Uint8ClampedArray(256 * 240 * 4).fill(0xFF), 256, 240);
 
     patterns_img = new ImageData(new Uint8ClampedArray(256 * 128 * 4).fill(0xFF), 256, 128);

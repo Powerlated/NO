@@ -2,7 +2,8 @@
     "compilerOptions": {
         "module": "commonjs",
         "strict": true,
-        "noFallthroughCasesInSwitch": true
+        "noFallthroughCasesInSwitch": true,
+        "inlineSourceMap": true
     },
     "exclude": [
         "node_modules"
