@@ -28,14 +28,17 @@ function cpu_intr_check(nes: NES) {
     if (nes.nmi_queued) {
         nes.nmi_queued = false;
 
-        console.log("Dispatching NMI")
+        console.log("Dispatching NMI");
 
-        const nmi_vector = read_mapper(nes, 0xFFFA) | (read_mapper(nes, 0xFFFB) << 8);
+        cpu_push16(nes, nes.reg_pc);
+        cpu_push8(nes, nes.flag_get_for_push());
+
+        const nmi_vector = cpu_read_tick(nes, 0xFFFA) | (cpu_read_tick(nes, 0xFFFB) << 8);
         nes.reg_pc = nmi_vector;
 
+        nes.flag_i = false;
 
-        cpu_push8(nes, nes.flag_get_for_push());
-        cpu_push16(nes, nes.reg_pc);
+        console.log(`NMI Vector: ${hex(nmi_vector, 4)}`);
     }
 }
 
@@ -309,7 +312,9 @@ function cpu_read_execute_ldx_stx_10(nes: NES, opcode: number): number {
         case 0b001: // zero page
             {
                 const zeroPageIndex = cpu_read_tick_inc(nes);
-                console.log(`Zero page index: ${hex(zeroPageIndex, 2)}`);
+
+                if (debug)
+                    console.log(`Zero page index: ${hex(zeroPageIndex, 2)}`);
 
                 return cpu_read_tick(nes, zeroPageIndex);
             }
@@ -351,7 +356,9 @@ function cpu_read_execute_10(nes: NES, opcode: number): number {
         case 0b001: // zero page
             {
                 const zeroPageIndex = cpu_read_tick_inc(nes);
-                console.log(`Zero page index: ${hex(zeroPageIndex, 2)}`);
+
+                if (debug)
+                    console.log(`Zero page index: ${hex(zeroPageIndex, 2)}`);
 
                 return cpu_read_tick(nes, zeroPageIndex);
             }
@@ -565,7 +572,9 @@ function cpu_read_modify_execute_10(nes: NES, opcode: number): number {
         case 0b001: // zero page
             {
                 const zeroPageIndex = cpu_read_tick(nes, nes.reg_pc);
-                console.log(`Zero page index: ${hex(zeroPageIndex, 2)}`);
+
+                if (debug)
+                    console.log(`Zero page index: ${hex(zeroPageIndex, 2)}`);
 
                 return cpu_read_tick(nes, zeroPageIndex);
             }
@@ -605,8 +614,9 @@ function cpu_read_modify_execute_10(nes: NES, opcode: number): number {
 }
 
 function cpu_push8(nes: NES, val: number) {
+    if (debug)
+        console.log(`cpu_push8: ${hex(val, 2)} addr: ${hex(cpu_sp_get(nes), 4)}`);
 
-    console.log(`cpu_push8: ${hex(val, 2)} addr: ${hex(cpu_sp_get(nes), 4)}`);
     cpu_write_tick(nes, cpu_sp_get(nes), val);
     cpu_sp_dec(nes);
 
@@ -614,7 +624,9 @@ function cpu_push8(nes: NES, val: number) {
 function cpu_pop8(nes: NES): number {
     cpu_sp_inc(nes);
     const byte = cpu_read_tick(nes, cpu_sp_get(nes));
-    console.log(`cpu_pop8: ${hex(byte, 2)} addr: ${hex(cpu_sp_get(nes), 4)}`);
+
+    if (debug)
+        console.log(`cpu_pop8: ${hex(byte, 2)} addr: ${hex(cpu_sp_get(nes), 4)}`);
 
 
     return byte;
@@ -668,7 +680,8 @@ function JMP_REL(nes: NES, opcode: number) {
 }
 
 function JMP_ABS(nes: NES, opcode: number) {
-    console.log("Absolute jump");
+    if (debug)
+        console.log("Absolute jump");
     const low = cpu_read_tick_inc(nes);
     const high = cpu_read_tick_inc(nes);
     const final = (high << 8) | low;
@@ -1014,7 +1027,9 @@ function TXS(nes: NES, opcode: number) {
 // #region Instructions that read and write back
 function LSR(nes: NES, opcode: number) {
     const val = cpu_read_modify_execute_10(nes, opcode);
-    console.log(`Input val: ${hex(val, 2)}`);
+
+    if (debug)
+        console.log(`Input val: ${hex(val, 2)}`);
 
     const result = val >> 1;
 
@@ -1022,7 +1037,8 @@ function LSR(nes: NES, opcode: number) {
     nes.flag_z = result == 0;
     nes.flag_n = bit_test(result, 7);
 
-    console.log(`Writeback val: ${hex(result, 2)}`);
+    if (debug)
+        console.log(`Writeback val: ${hex(result, 2)}`);
     cpu_write_execute_10(nes, opcode, result);
 }
 

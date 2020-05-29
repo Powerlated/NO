@@ -82,6 +82,7 @@ function step() {
     }
 }
 
+let disasmElement = document.getElementById('disasm')!;
 let debugElement = document.getElementById('debug')!;
 
 function ready() {
@@ -100,6 +101,8 @@ let frame = 0;
 function updateDebug() {
     requestAnimationFrame(updateDebug);
 
+    disasmElement.innerHTML = disassemble(nes);
+
     if (frame < 2 && !errored) {
         try {
             runFrame();
@@ -115,7 +118,6 @@ function updateDebug() {
     NMI Ready: ${nes.nmi_queued}
 
     PC: ${hex(nes.reg_pc, 4)}
-    [PC]: ${hex(mem_read(nes, nes.reg_pc), 2)}
     SP: ${hex(cpu_sp_get(nes), 4)}
 
     A: ${hex(nes.reg_a, 2)}

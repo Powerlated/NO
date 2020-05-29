@@ -21,10 +21,14 @@
     <h1>NO - NES Optime</h1>
     <canvas id="nes-canvas" width="256" height="240"></canvas>
 
-    <div>
-        <div id="debug"></div>
+    <div id="panels">
+        <div class="panel" id="debug"></div>
+        <div class="panel" id="disasm">
+            Disassembly goes here
+        </div>
     </div>
-    
+
+    <script src="./disassembler.js"></script>
     <script src="./nes-handler.js"></script>
 </body>
 

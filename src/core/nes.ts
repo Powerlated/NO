@@ -109,9 +109,14 @@ class NES {
     ppu_ppudata_head = 0;
     ppu_vram = new Uint8Array(0x4000);
 
+    ppu_oamaddr = 0;
+    ppu_oam = new Uint8Array(0x100);
+
     ppu_ppuscroll_latch = false;
     ppu_ppuscroll_x = 0;
     ppu_ppuscroll_y = 0;
+
+    ppu_img = new ImageData(new Uint8ClampedArray(256 * 240 * 4).fill(0xFF), 256, 240);
 
     iram = new Uint8Array(0x800);
 

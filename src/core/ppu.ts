@@ -14,6 +14,7 @@ function ppu_reg_write(nes: NES, addr: number, val: number): void {
     switch (addr) {
         case 0x2000: ppu_write_ppuctrl(nes, val); return;
         case 0x2001: ppu_write_ppumask(nes, val); return;
+        case 0x2003: ppu_write_oamaddr(nes, val); return;
         case 0x2005: ppu_write_ppuscroll(nes, val); return;
         case 0x2006: ppu_write_ppuaddr(nes, val); return;
         case 0x2007: ppu_write_ppudata(nes, val); return;
@@ -66,8 +67,11 @@ function ppu_write_ppuaddr(nes: NES, val: number) {
 }
 
 function ppu_read_ppudata(nes: NES): number {
-    const val = nes.ppu_vram[nes.ppu_ppudata_head & 0x3FFF];
+    const val = ppu_read_vram(nes, nes.ppu_ppudata_head & 0x3FFF);
     if (nes.ppu_ppudata_access_inc) {
+        nes.ppu_ppudata_head += 32;
+        nes.ppu_ppudata_head &= 0x3FFF;
+    } else {
         nes.ppu_ppudata_head++;
         nes.ppu_ppudata_head &= 0x3FFF;
     }
@@ -75,12 +79,29 @@ function ppu_read_ppudata(nes: NES): number {
 }
 
 function ppu_write_ppudata(nes: NES, val: number) {
-    nes.ppu_vram[nes.ppu_ppudata_head & 0x3FFF] = val;
+    ppu_write_vram(nes, nes.ppu_ppudata_head & 0x3FFF, val);
     if (nes.ppu_ppudata_access_inc) {
+        nes.ppu_ppudata_head += 32;
+        nes.ppu_ppudata_head &= 0x3FFF;
+    } else {
         nes.ppu_ppudata_head++;
         nes.ppu_ppudata_head &= 0x3FFF;
     }
 }
+
+function ppu_read_vram(nes: NES, addr: number): number {
+    // console.log(`ppu_read_vram addr:${hex(addr, 4)}`);
+    if (addr >= 0x0000 && addr <= 0x1FFF) {
+
+    }
+
+    return 0;
+}
+
+function ppu_write_vram(nes: NES, addr: number, val: number) {
+    // console.log(`ppu_write_vram addr:${hex(addr, 4)} val:${hex(val, 2)}`);
+}
+
 
 function ppu_write_ppuscroll(nes: NES, val: number) {
     if (!nes.ppu_ppuscroll_latch) {
@@ -91,11 +112,25 @@ function ppu_write_ppuscroll(nes: NES, val: number) {
     nes.ppu_ppuscroll_latch = true;
 }
 
+function ppu_write_oamaddr(nes: NES, val: number) {
+    nes.ppu_oamaddr = val;
+}
+
 function ppu_advance(nes: NES, cycles: number) {
     // Visible scanlines
     if (nes.ppu_line >= 0 && nes.ppu_line <= 239) {
         while (cycles > 0) {
             cycles--;
+
+            if (nes.ppu_line_clock < 256) {
+                const color = [nes.ppu_line_clock, nes.ppu_line, 256 - nes.ppu_line_clock];
+
+                const index = ((nes.ppu_line * 256) + nes.ppu_line_clock) * 4;
+                nes.ppu_img.data[index + 0] = color[0];
+                nes.ppu_img.data[index + 1] = color[1];
+                nes.ppu_img.data[index + 2] = color[2];
+            }
+
             nes.ppu_line_clock++;
             if (nes.ppu_line_clock >= 342) {
                 nes.ppu_line_clock -= 342;
@@ -114,12 +149,17 @@ function ppu_advance(nes: NES, cycles: number) {
             }
         }
     }
+    // Vblank
     else if (nes.ppu_line >= 241 && nes.ppu_line <= 260) {
         while (cycles > 0) {
             cycles--;
             if (nes.ppu_line == 241 && nes.ppu_line_clock == 1) {
+                // console.log("Vblank hit");
                 nes.ppu_nmi_occurred = true;
                 ppu_check_nmi(nes);
+
+                // Draw the image here
+                ppu_draw(nes);
             }
             nes.ppu_line_clock++;
             if (nes.ppu_line_clock >= 342) {
@@ -128,11 +168,15 @@ function ppu_advance(nes: NES, cycles: number) {
             }
         }
     }
+    // Pre-render scanline
     else if (nes.ppu_line == 261) {
         while (cycles > 0) {
             cycles--;
-            if (nes.ppu_line == 241 && nes.ppu_line_clock == 1) {
+            if (nes.ppu_line_clock == 1) {
+                console.log("NMI flag clear");
                 nes.ppu_nmi_occurred = false;
+                ppu_check_nmi(nes);
+
             }
             nes.ppu_line_clock++;
             if (nes.ppu_line_clock >= 342) {
@@ -141,6 +185,12 @@ function ppu_advance(nes: NES, cycles: number) {
             }
         }
     }
+}
+
+function ppu_draw(nes: NES) {
+    console.log("Drawing to Canvas");
+    let canvas = (document.getElementById('nes-canvas')! as HTMLCanvasElement);
+    canvas.getContext('2d')!.putImageData(nes.ppu_img, 0, 0);
 }
 
 function ppu_check_nmi(nes: NES) {
