@@ -92,7 +92,36 @@ function ppu_write_ppudata(nes: NES, val: number) {
 function ppu_read_vram(nes: NES, addr: number): number {
     // console.log(`ppu_read_vram addr:${hex(addr, 4)}`);
     if (addr >= 0x0000 && addr <= 0x1FFF) {
+        switch (nes.cart.mapper) {
+            case 0:
+                return nes.cart.chr_rom_data[addr & 0x1FFF];
+            default:
+                throw `ppu_read_vram: Mapper ${nes.cart.mapper} not implemented`;
+        }
+    }
 
+    else if (addr >= 0x2000 && addr <= 0x2FFF) {
+        if (nes.cart.vertical_mirroring) {
+            if (addr >= 0x2000 && addr <= 0x23FF) {
+                return nes.ppu_nametable_a[addr & 0x3FF];
+            } else if (addr >= 0x2400 && addr <= 0x27FF) {
+                return nes.ppu_nametable_b[addr & 0x3FF];
+            } else if (addr >= 0x2800 && addr <= 0x2BFF) {
+                return nes.ppu_nametable_a[addr & 0x3FF];
+            } else if (addr >= 0x2C00 && addr <= 0x2FFF) {
+                return nes.ppu_nametable_b[addr & 0x3FF];
+            }
+        } else {
+            if (addr >= 0x2000 && addr <= 0x23FF) {
+                return nes.ppu_nametable_a[addr & 0x3FF];
+            } else if (addr >= 0x2400 && addr <= 0x27FF) {
+                return nes.ppu_nametable_a[addr & 0x3FF];
+            } else if (addr >= 0x2800 && addr <= 0x2BFF) {
+                return nes.ppu_nametable_b[addr & 0x3FF];
+            } else if (addr >= 0x2C00 && addr <= 0x2FFF) {
+                return nes.ppu_nametable_b[addr & 0x3FF];
+            }
+        }
     }
 
     return 0;
@@ -100,6 +129,34 @@ function ppu_read_vram(nes: NES, addr: number): number {
 
 function ppu_write_vram(nes: NES, addr: number, val: number) {
     // console.log(`ppu_write_vram addr:${hex(addr, 4)} val:${hex(val, 2)}`);
+
+    if (addr >= 0x0000 && addr <= 0x1FFF) {
+
+    }
+
+    else if (addr >= 0x2000 && addr <= 0x2FFF) {
+        if (nes.cart.vertical_mirroring) {
+            if (addr >= 0x2000 && addr <= 0x23FF) {
+                nes.ppu_nametable_a[addr & 0x3FF] = val;
+            } else if (addr >= 0x2400 && addr <= 0x27FF) {
+                nes.ppu_nametable_b[addr & 0x3FF] = val;
+            } else if (addr >= 0x2800 && addr <= 0x2BFF) {
+                nes.ppu_nametable_a[addr & 0x3FF] = val;
+            } else if (addr >= 0x2C00 && addr <= 0x2FFF) {
+                nes.ppu_nametable_b[addr & 0x3FF] = val;
+            }
+        } else {
+            if (addr >= 0x2000 && addr <= 0x23FF) {
+                nes.ppu_nametable_a[addr & 0x3FF] = val;
+            } else if (addr >= 0x2400 && addr <= 0x27FF) {
+                nes.ppu_nametable_a[addr & 0x3FF] = val;
+            } else if (addr >= 0x2800 && addr <= 0x2BFF) {
+                nes.ppu_nametable_b[addr & 0x3FF] = val;
+            } else if (addr >= 0x2C00 && addr <= 0x2FFF) {
+                nes.ppu_nametable_b[addr & 0x3FF] = val;
+            }
+        }
+    }
 }
 
 
@@ -116,25 +173,131 @@ function ppu_write_oamaddr(nes: NES, val: number) {
     nes.ppu_oamaddr = val;
 }
 
+function ppu_shift_out(nes: NES) {
+    if (nes.ppu_pattern_shift_pos > 0) {
+        nes.ppu_pattern_shift_pos--;
+
+        let val = nes.ppu_pattern_shift[nes.ppu_pattern_shift_pos];
+
+        let index = 4 * (nes.ppu_pixel_x + (256 * nes.ppu_line));
+        nes.ppu_img.data[index + 0] = table_2bpp_to_8bpp[val];
+        nes.ppu_img.data[index + 1] = table_2bpp_to_8bpp[val];
+        nes.ppu_img.data[index + 2] = table_2bpp_to_8bpp[val];
+
+        nes.ppu_pixel_x++;
+    }
+}
+
+function ppu_advance_fetcher(nes: NES) {
+    switch (nes.ppu_fetcher_state) {
+        // Nametable byte
+        case 0:
+            let nametable_base = [0x2000, 0x2400, 0x2800, 0x2C00][nes.ppu_nametable_base_id];
+            nes.ppu_nametable_byte = ppu_read_vram(nes, nametable_base + nes.ppu_nametable_index);
+            nes.ppu_nametable_index++;
+            break;
+        // Attribute table byte
+        case 2:
+            {
+            }
+            break;
+        // Pattern table tile lower
+        case 6:
+            {
+                let tileBase = (nes.ppu_nametable_byte * 16) + 0;
+                tileBase += nes.ppu_line & 7;
+
+                let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
+                nes.ppu_pattern_lower_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase);
+            }
+            break;
+        // Pattern table tile upper
+        case 4:
+            {
+                let tileBase = (nes.ppu_nametable_byte * 16) + 8;
+                tileBase += nes.ppu_line & 7;
+
+                let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
+                nes.ppu_pattern_upper_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase);
+            }
+            break;
+
+        // Try to push
+        case 7:
+            if (nes.ppu_pattern_shift_pos < 8) {
+                for (let pixel = 0; pixel < 8; pixel++) {
+                    let pixelLower = bit_test(nes.ppu_pattern_lower_byte, pixel);
+                    let pixelUpper = bit_test(nes.ppu_pattern_upper_byte, pixel);
+
+                    nes.ppu_pattern_shift[nes.ppu_pattern_shift_pos] = (pixelUpper ? 2 : 0) + (pixelLower ? 1 : 0);
+                    nes.ppu_pattern_shift_pos++;
+                }
+            }
+            break;
+
+        case 1: break;
+        case 3: break;
+        case 5: break;
+    }
+
+    nes.ppu_fetcher_state++;
+    nes.ppu_fetcher_state &= 7;
+
+}
+
+function ppu_fetcher_reset(nes: NES) {
+    nes.ppu_fetcher_state = 0;
+    nes.ppu_nametable_index = (nes.ppu_line >> 3) * 32;
+    nes.ppu_pattern_shift_pos = 0;
+    nes.ppu_pixel_x = 0;
+}
+
 function ppu_advance(nes: NES, cycles: number) {
-    // Visible scanlines
-    if (nes.ppu_line >= 0 && nes.ppu_line <= 239) {
+    // Pre-render scanline
+    if (nes.ppu_line == 261) {
         while (cycles > 0) {
             cycles--;
+            if (nes.ppu_line_clock == 1) {
+                if (debug)
+                    console.log("NMI flag clear");
+                nes.ppu_nmi_occurred = false;
+                ppu_check_nmi(nes);
+            }
 
-            if (nes.ppu_line_clock < 256) {
-                const color = [nes.ppu_line_clock, nes.ppu_line, 256 - nes.ppu_line_clock];
-
-                const index = ((nes.ppu_line * 256) + nes.ppu_line_clock) * 4;
-                nes.ppu_img.data[index + 0] = color[0];
-                nes.ppu_img.data[index + 1] = color[1];
-                nes.ppu_img.data[index + 2] = color[2];
+            if (nes.ppu_line_clock == 320) ppu_fetcher_reset(nes);
+            if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
+                ppu_advance_fetcher(nes);
             }
 
             nes.ppu_line_clock++;
             if (nes.ppu_line_clock >= 342) {
                 nes.ppu_line_clock -= 342;
+                nes.ppu_line = 0;
+            }
+        }
+    }
+    // Visible scanlines
+    else if (nes.ppu_line >= 0 && nes.ppu_line <= 239) {
+        while (cycles > 0) {
+            cycles--;
+
+            if (nes.ppu_line_clock < 256) {
+                ppu_advance_fetcher(nes);
+                ppu_shift_out(nes);
+            }
+
+            if (nes.ppu_line_clock == 320) {
                 nes.ppu_line++;
+                ppu_fetcher_reset(nes);
+            }
+            if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
+                ppu_advance_fetcher(nes);
+            }
+
+            nes.ppu_line_clock++;
+            if (nes.ppu_line_clock >= 342) {
+                nes.ppu_line_clock -= 342;
+
             }
         }
     }
@@ -168,29 +331,47 @@ function ppu_advance(nes: NES, cycles: number) {
             }
         }
     }
-    // Pre-render scanline
-    else if (nes.ppu_line == 261) {
-        while (cycles > 0) {
-            cycles--;
-            if (nes.ppu_line_clock == 1) {
-                console.log("NMI flag clear");
-                nes.ppu_nmi_occurred = false;
-                ppu_check_nmi(nes);
-
-            }
-            nes.ppu_line_clock++;
-            if (nes.ppu_line_clock >= 342) {
-                nes.ppu_line_clock -= 342;
-                nes.ppu_line = 0;
-            }
-        }
-    }
 }
 
+const table_2bpp_to_8bpp = Uint8Array.of(
+    0 * (255 / 3),
+    1 * (255 / 3),
+    2 * (255 / 3),
+    3 * (255 / 3),
+);
+
 function ppu_draw(nes: NES) {
+    let pixels = new Uint8Array(8);
+
+    // for (let tile = 0; tile < 256; tile++) {
+    //     let tileBase = tile * 16;
+    //     for (let row = 0; row < 8; row++) {
+
+    //         let lower = ppu_read_vram(nes, tileBase + 0 + row);
+    //         let upper = ppu_read_vram(nes, tileBase + 8 + row);
+
+    //         let index = nes.patterns_img.width * 4 * (row + (tile * 8));
+
+    //         for (let pixel = 0; pixel < 8; pixel++) {
+    //             let pixelLower = bit_test(lower, pixel);
+    //             let pixelUpper = bit_test(upper, pixel);
+
+    //             pixels[pixel] = (pixelUpper ? 2 : 0) + (pixelLower ? 1 : 0);
+
+    //             nes.patterns_img.data[index + 0] = table_2bpp_to_8bpp[pixels[pixel]];
+    //             nes.patterns_img.data[index + 1] = table_2bpp_to_8bpp[pixels[pixel]];
+    //             nes.patterns_img.data[index + 2] = table_2bpp_to_8bpp[pixels[pixel]];
+    //             index += 4;
+    //         }
+    //     }
+    // }
+
     console.log("Drawing to Canvas");
-    let canvas = (document.getElementById('nes-canvas')! as HTMLCanvasElement);
-    canvas.getContext('2d')!.putImageData(nes.ppu_img, 0, 0);
+    let nes_canvas = (document.getElementById('nes-canvas')! as HTMLCanvasElement);
+    nes_canvas.getContext('2d')!.putImageData(nes.ppu_img, 0, 0);
+
+    let pattern_canvas = (document.getElementById('pattern-canvas')! as HTMLCanvasElement);
+    pattern_canvas.getContext('2d')!.putImageData(nes.patterns_img, 0, 0);
 }
 
 function ppu_check_nmi(nes: NES) {

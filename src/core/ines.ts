@@ -77,25 +77,29 @@ function parse_iNES(rom: Uint8Array): iNES {
         read_head++;
     }
 
-    const nes = new iNES(mapper_id, prg_rom_data, chr_rom_data);
+    const nes = new iNES(mapper_id, prg_rom_data, chr_rom_data, vertical_mirroring);
     return nes;
 }
 
 
 class iNES {
     mapper: number;
-    
+
     prg_rom_data: Uint8Array;
     chr_rom_data: Uint8Array;
 
-    constructor(mapper: number, prg_rom_data: Uint8Array, chr_rom_data: Uint8Array) {
+    vertical_mirroring: boolean;
+
+    constructor(mapper: number, prg_rom_data: Uint8Array, chr_rom_data: Uint8Array, vertical_mirroring: boolean) {
         this.mapper = mapper;
-        
+
         this.prg_rom_data = prg_rom_data;
         this.chr_rom_data = chr_rom_data;
+
+        this.vertical_mirroring = vertical_mirroring;
     }
 }
 
 function generate_empty_iNES(): iNES {
-    return new iNES(0, new Uint8Array(16384), new Uint8Array(8192));
+    return new iNES(0, new Uint8Array(16384), new Uint8Array(8192), false);
 }

@@ -3,10 +3,7 @@ html {
   font-weight: 500;
 }
 
-#nes-canvas {
-  width: 256px;
-  height: 240px;
-
+canvas {
   image-rendering: -moz-crisp-edges;
   /* Firefox */
   image-rendering: -webkit-crisp-edges;
@@ -14,9 +11,18 @@ html {
   image-rendering: pixelated;
   /* Chrome */
 
-  outline-style: solid;
-  outline-width: thick;
-  outline-color: black;
+  border-style: solid;
+  border-width: thick;
+  border-color: black;
+}
+
+#nes-canvas {
+  width: 512px;
+  height: 480px;
+}
+#pattern-canvas {
+  width: 256px;
+  height: 128px;
 }
 
 #panels {
