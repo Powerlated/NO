@@ -7,7 +7,7 @@ romReq.onload = function (e) {
     console.log("nestest loaded")
     ready();
 };
-romReq.open("GET", 'nestest.nes');
+romReq.open("GET", 'official_only.nes');
 romReq.responseType = "arraybuffer";
 romReq.send();
 

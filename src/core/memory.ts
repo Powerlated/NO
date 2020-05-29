@@ -74,10 +74,11 @@ function write_mapper(nes: NES, addr: number, val: number) {
 }
 
 function io_read(nes: NES, addr: number): number {
-    throw "io_read not implemented";
     return 0xFF;
+    throw `io_read not implemented addr:${hex(addr, 4)}`;
 }
 
 function io_write(nes: NES, addr: number, val: number): void {
-    throw "io_write not implemented";
+    return;
+    throw `io_write not implemented addr:${hex(addr, 4)} val:${hex(val, 2)}`;
 }

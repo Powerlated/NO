@@ -1,6 +1,8 @@
-const debug = true;
+const debug = false;
 
-function cpu_execute(nes: NES): void {
+function cpu_execute(nes: NES): number {
+    const prev_cycles = nes.cycles;
+
     if (debug) {
         console.log(`PC: ${hex(nes.reg_pc, 4)}`);
     }
@@ -12,12 +14,29 @@ function cpu_execute(nes: NES): void {
     }
 
     cpu_dispatch(nes, opcode);
+    cpu_intr_check(nes);
 
     bounds_check(nes.reg_a, 0, 0xFF, "A");
     bounds_check(nes.reg_x, 0, 0xFF, "X");
     bounds_check(nes.reg_y, 0, 0xFF, "Y");
     bounds_check(cpu_sp_get(nes), 0x100, 0x1FF, "SP");
 
+    return nes.cycles - prev_cycles;
+}
+
+function cpu_intr_check(nes: NES) {
+    if (nes.nmi_queued) {
+        nes.nmi_queued = false;
+
+        console.log("Dispatching NMI")
+
+        const nmi_vector = read_mapper(nes, 0xFFFA) | (read_mapper(nes, 0xFFFB) << 8);
+        nes.reg_pc = nmi_vector;
+
+
+        cpu_push8(nes, nes.flag_get_for_push());
+        cpu_push16(nes, nes.reg_pc);
+    }
 }
 
 function bounds_check(i: number, lower: number, upper: number, desc: string) {
@@ -164,6 +183,7 @@ function cpu_dispatch(nes: NES, opcode: number): void {
 }
 
 function cpu_read_tick(nes: NES, addr: number): number {
+    nes_tick(nes, 1);
     return mem_read(nes, addr);
 }
 
@@ -172,6 +192,7 @@ function cpu_read_tick_inc(nes: NES): number {
 }
 
 function cpu_write_tick(nes: NES, addr: number, val: number): void {
+    nes_tick(nes, 1);
     mem_write(nes, addr, val);
 }
 

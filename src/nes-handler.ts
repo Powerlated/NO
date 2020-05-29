@@ -9,71 +9,77 @@ window.onkeydown = (e: KeyboardEvent) => {
             step();
             break;
         case 'd':
-            while (!errored) {
-                step();
+            const scanlineMax = 341 / 3;
+            let cycles = 0;
+            while (cycles <= scanlineMax) {
+                cycles += cpu_execute(nes);
             }
+            break;
+        case 'f':
+            runFrame();
     }
 };
 
 function exec_num(max: number) {
     for (let i = 0; i < max; i++)
-        step();
+        cpu_execute(nes);
 }
 
+let checkErrors = false;
 let logLine = 1;
 function step() {
     cpu_execute(nes);
 
-    let logPc = `0x${nestest_log[logLine].slice(0, 4)}`;
-    let pc = hex(nes.reg_pc, 4);
-    if (logPc !== pc) {
-        console.error(`Line ${logLine}: nestest PC mismatch
+    if (checkErrors) {
+        let logPc = `0x${nestest_log[logLine].slice(0, 4)}`;
+        let pc = hex(nes.reg_pc, 4);
+        if (logPc !== pc) {
+            console.error(`Line ${logLine}: nestest PC mismatch
         Expected: ${logPc}, Actual: ${pc}`);
-        errored = true;
-    }
+            errored = true;
+        }
 
-    let logP = `0x${nestest_log[logLine].slice(65, 67)}`;
-    let p = hex(nes.flag_get(), 2);
-    if (logP !== p) {
-        console.error(`Line ${logLine}: nestest P mismatch
+        let logP = `0x${nestest_log[logLine].slice(65, 67)}`;
+        let p = hex(nes.flag_get(), 2);
+        if (logP !== p) {
+            console.error(`Line ${logLine}: nestest P mismatch
         Expected: ${logP}, Actual: ${p}`);
-        errored = true;
-    }
+            errored = true;
+        }
 
-    let logSp = `0x${nestest_log[logLine].slice(71, 73)}`;
-    let sp = hex(nes.reg_sp, 2);
-    if (logSp !== sp) {
-        console.error(`Line ${logLine}: nestest SP mismatch
+        let logSp = `0x${nestest_log[logLine].slice(71, 73)}`;
+        let sp = hex(nes.reg_sp, 2);
+        if (logSp !== sp) {
+            console.error(`Line ${logLine}: nestest SP mismatch
         Expected: ${logSp}, Actual: ${sp}`);
-        errored = true;
-    }
+            errored = true;
+        }
 
-    let logA = `0x${nestest_log[logLine].slice(50, 52)}`;
-    let a = hex(nes.reg_a, 2);
-    if (logA !== a) {
-        console.error(`Line ${logLine}: nestest A mismatch
+        let logA = `0x${nestest_log[logLine].slice(50, 52)}`;
+        let a = hex(nes.reg_a, 2);
+        if (logA !== a) {
+            console.error(`Line ${logLine}: nestest A mismatch
         Expected: ${logA}, Actual: ${a}`);
-        errored = true;
-    }
+            errored = true;
+        }
 
-    let logX = `0x${nestest_log[logLine].slice(55, 57)}`;
-    let x = hex(nes.reg_x, 2);
-    if (logX !== x) {
-        console.error(`Line ${logLine}: nestest X mismatch
+        let logX = `0x${nestest_log[logLine].slice(55, 57)}`;
+        let x = hex(nes.reg_x, 2);
+        if (logX !== x) {
+            console.error(`Line ${logLine}: nestest X mismatch
         Expected: ${logX}, Actual: ${x}`);
-        errored = true;
-    }
-    let logY = `0x${nestest_log[logLine].slice(60, 62)}`;
-    let y = hex(nes.reg_y, 2);
-    if (logY !== y) {
-        console.error(`Line ${logLine}: nestest Y mismatch
+            errored = true;
+        }
+        let logY = `0x${nestest_log[logLine].slice(60, 62)}`;
+        let y = hex(nes.reg_y, 2);
+        if (logY !== y) {
+            console.error(`Line ${logLine}: nestest Y mismatch
         Expected: ${logY}, Actual: ${y}`);
-        errored = true;
+            errored = true;
+        }
+
+        logLine++;
     }
-
-
-
-    logLine++;
 }
 
 let debugElement = document.getElementById('debug')!;
@@ -82,10 +88,32 @@ function ready() {
     updateDebug();
 }
 
+function runFrame() {
+    const frameMax = 89341.5 / 3;
+    let cycles = 0;
+    while (cycles <= frameMax) {
+        cycles += cpu_execute(nes);
+    }
+}
+
+let frame = 0;
 function updateDebug() {
     requestAnimationFrame(updateDebug);
 
+    if (frame < 2 && !errored) {
+        try {
+            runFrame();
+        } catch (e) {
+            errored = true;
+            console.error(e);
+        }
+    }
+    frame++;
+
     debugElement.innerText = `
+    Cycles: ${nes.cycles}
+    NMI Ready: ${nes.nmi_queued}
+
     PC: ${hex(nes.reg_pc, 4)}
     [PC]: ${hex(mem_read(nes, nes.reg_pc), 2)}
     SP: ${hex(cpu_sp_get(nes), 4)}
@@ -94,6 +122,12 @@ function updateDebug() {
     X: ${hex(nes.reg_x, 2)}
     Y: ${hex(nes.reg_y, 2)}
 
-    Log Line: ${logLine}
+    PPU Addr Head: ${nes.ppu_ppudata_head}
+
+    PPU Line: ${nes.ppu_line}
+    PPU Line Dot: ${nes.ppu_line_clock}
+
+    PPU NMI Enable: ${nes.ppu_enable_nmi}
+    PPU NMI Occurred: ${nes.ppu_nmi_occurred}
     `;
 }
