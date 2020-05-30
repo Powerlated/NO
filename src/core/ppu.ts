@@ -15,11 +15,17 @@ function ppu_reg_write(nes: NES, addr: number, val: number): void {
         case 0x2000: ppu_write_ppuctrl(nes, val); return;
         case 0x2001: ppu_write_ppumask(nes, val); return;
         case 0x2003: ppu_write_oamaddr(nes, val); return;
+        case 0x2004: ppu_write_oamdata(nes, val); return;
         case 0x2005: ppu_write_ppuscroll(nes, val); return;
         case 0x2006: ppu_write_ppuaddr(nes, val); return;
         case 0x2007: ppu_write_ppudata(nes, val); return;
     }
     throw `ppu_reg_write not implemented addr:${hex(addr, 4)} val:${hex(val, 2)}`;
+}
+
+function ppu_write_oamdata(nes: NES, val: number) {
+    nes.ppu_oam[nes.ppu_oamaddr] = val;
+    nes.ppu_oamaddr = (nes.ppu_oamaddr) & 0xFF;
 }
 
 function ppu_write_ppuctrl(nes: NES, val: number) {

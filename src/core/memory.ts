@@ -17,7 +17,7 @@ function mem_read(nes: NES, addr: number): number {
         return read_mapper(nes, addr);
     }
 
-    throw `mem_read out of bounds`
+    throw `mem_read out of bounds`;
 }
 
 function mem_read_debug(nes: NES, addr: number): number {
@@ -39,7 +39,7 @@ function mem_read_debug(nes: NES, addr: number): number {
         return read_mapper(nes, addr);
     }
 
-    throw `mem_read out of bounds`
+    throw `mem_read out of bounds`;
 }
 
 function mem_write(nes: NES, addr: number, val: number): void {
@@ -92,11 +92,15 @@ function read_mapper(nes: NES, addr: number) {
 }
 
 function write_mapper(nes: NES, addr: number, val: number) {
+    switch (nes.cart.mapper) {
+        case 0:
+            return;
+    }
     throw "write_mapper not implemented";
 }
 
 function io_read(nes: NES, addr: number): number {
-    return 0xFF;
+    return 0;
     throw `io_read not implemented addr:${hex(addr, 4)}`;
 }
 
