@@ -208,22 +208,30 @@ function ppu_write_oamaddr(nes: NES, val: number) {
 }
 
 function ppu_shift_out(nes: NES) {
-    if (nes.ppu_pattern_shift_pos > 0) {
+    if (nes.ppu_pattern_shift_pos > 0 && nes.ppu_attribute_shift_pos > 0) {
         nes.ppu_pattern_shift_pos--;
+        nes.ppu_attribute_shift_pos--;
 
-        let val = nes.ppu_pattern_shift[nes.ppu_pattern_shift_pos];
+        let pattern_val = nes.ppu_pattern_shift[nes.ppu_pattern_shift_pos];
+        let attribute_val = nes.ppu_attribute_shift[nes.ppu_attribute_shift_pos];
+
 
         let index = 4 * (nes.ppu_pixel_x + (256 * nes.ppu_line));
 
-        if (val != 0) {
-            nes.ppu_img.data[index + 0] = nes.ppu_bg_palette[0][val - 1][0];
-            nes.ppu_img.data[index + 1] = nes.ppu_bg_palette[0][val - 1][1];
-            nes.ppu_img.data[index + 2] = nes.ppu_bg_palette[0][val - 1][2];
+        if (pattern_val != 0) {
+            nes.ppu_img.data[index + 0] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][0];
+            nes.ppu_img.data[index + 1] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][1];
+            nes.ppu_img.data[index + 2] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][2];
         } else {
             nes.ppu_img.data[index + 0] = nes.ppu_universal_bg_col[0];
             nes.ppu_img.data[index + 1] = nes.ppu_universal_bg_col[1];
             nes.ppu_img.data[index + 2] = nes.ppu_universal_bg_col[2];
         }
+
+        // nes.ppu_img.data[index + 0] = table_2bpp_to_8bpp[pattern_val];
+        // nes.ppu_img.data[index + 1] = table_2bpp_to_8bpp[pattern_val];
+        // nes.ppu_img.data[index + 2] = table_2bpp_to_8bpp[pattern_val];
+
         nes.ppu_pixel_x++;
     }
 }
@@ -245,6 +253,7 @@ function ppu_advance_fetcher(nes: NES) {
                     nes.ppu_nametable_index++;
                 }
                 if (nes.ppu_attribute_shift_pos == 0) {
+
                     for (let pixel = 0; pixel < 8; pixel++) {
                         nes.ppu_attribute_shift[nes.ppu_attribute_shift_pos] = nes.ppu_attribute_val;
                         nes.ppu_attribute_shift_pos++;
@@ -259,10 +268,15 @@ function ppu_advance_fetcher(nes: NES) {
         // Attribute table byte
         case 2:
             {
-                let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
-                let attrtable_val = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index);
+                nes.ppu_attribute_index = ((nes.ppu_line >> 5) * 8) + (nes.ppu_pixel_x >> 5);
 
-                nes.ppu_attribute_val = attrtable_val & 3;
+                let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
+                let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index);
+
+                // if ((nes.ppu_line & 0b1111) >= 8) attrtable_byte >>= 4;
+                // if ((nes.ppu_pixel_x & 0b1111) >= 8) attrtable_byte >>= 2;
+
+                nes.ppu_attribute_val = attrtable_byte & 3;
             }
             break;
         // Pattern table tile lower
@@ -273,15 +287,17 @@ function ppu_advance_fetcher(nes: NES) {
 
                 let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
                 nes.ppu_pattern_lower_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase + 0);
-                nes.ppu_pattern_upper_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase + 8);
 
             }
             break;
         // Pattern table tile upper
         case 6:
             {
+                let tileBase = (nes.ppu_nametable_val * 16) + 0;
+                tileBase += nes.ppu_line & 7;
 
-
+                let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
+                nes.ppu_pattern_upper_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase + 8);
             }
             break;
 
@@ -300,10 +316,9 @@ function ppu_advance_fetcher(nes: NES) {
 function ppu_fetcher_reset(nes: NES) {
     nes.ppu_fetcher_state = 0;
 
-    nes.ppu_nametable_index = ((nes.ppu_line >> 3) * 32) + (nes.ppu_ppuscroll_x >> 3);
+    nes.ppu_nametable_index = ((nes.ppu_line >> 3) * 32) + (0 >> 3);
     nes.ppu_pattern_shift_pos = 0;
 
-    nes.ppu_attribute_index = ((nes.ppu_line >> 5) * 8) + (nes.ppu_ppuscroll_x >> 5);
     nes.ppu_attribute_shift_pos = 0;
 
     nes.ppu_pixel_x = 0;
@@ -423,7 +438,7 @@ function ppu_draw(nes: NES) {
     //     }
     // }
 
-    console.log("Drawing to Canvas");
+    // console.log("Drawing to Canvas");
     let nes_canvas = (document.getElementById('nes-canvas')! as HTMLCanvasElement);
     nes_canvas.getContext('2d')!.putImageData(nes.ppu_img, 0, 0);
 
@@ -440,61 +455,69 @@ function ppu_check_nmi(nes: NES) {
     nes.nmi_line = now;
 }
 
-const PALETTE_RGB_TABLE = [
-    new Uint8Array([152, 150, 152]),
-    new Uint8Array([8, 76, 196]),
-    new Uint8Array([48, 50, 236]),
-    new Uint8Array([92, 30, 228]),
-    new Uint8Array([136, 20, 176]),
-    new Uint8Array([160, 20, 100]),
-    new Uint8Array([152, 34, 32]),
-    new Uint8Array([120, 60, 0]),
-    new Uint8Array([84, 90, 0]),
-    new Uint8Array([40, 114, 0,]),
-    new Uint8Array([8, 124, 0]),
-    new Uint8Array([0, 118, 40,]),
-    new Uint8Array([0, 102, 120]),
-    new Uint8Array([0, 0, 0]),
-    new Uint8Array([84, 84, 84]),
-    new Uint8Array([0, 30, 116]),
-    new Uint8Array([8, 16, 144]),
-    new Uint8Array([48, 0, 136]),
-    new Uint8Array([68, 0, 100]),
-    new Uint8Array([92, 0, 48]),
-    new Uint8Array([84, 4, 0]),
-    new Uint8Array([60, 24, 0]),
-    new Uint8Array([32, 42, 0]),
-    new Uint8Array([8, 58, 0,]),
-    new Uint8Array([0, 64, 0]),
-    new Uint8Array([0, 60, 0,]),
-    new Uint8Array([0, 50, 60]),
-    new Uint8Array([0, 0, 0]),
-    new Uint8Array([236, 238, 236]),
-    new Uint8Array([76, 154, 236]),
-    new Uint8Array([120, 124, 236]),
-    new Uint8Array([176, 98, 236]),
-    new Uint8Array([228, 84, 236]),
-    new Uint8Array([236, 88, 180]),
-    new Uint8Array([236, 106, 100]),
-    new Uint8Array([212, 136, 32]),
-    new Uint8Array([160, 170, 0]),
-    new Uint8Array([116, 196, 0,]),
-    new Uint8Array([76, 208, 32]),
-    new Uint8Array([56, 204, 108,]),
-    new Uint8Array([56, 180, 204]),
-    new Uint8Array([60, 60, 60]),
-    new Uint8Array([236, 238, 236]),
-    new Uint8Array([168, 204, 236]),
-    new Uint8Array([188, 188, 236]),
-    new Uint8Array([212, 178, 236]),
-    new Uint8Array([236, 174, 236]),
-    new Uint8Array([236, 174, 212]),
-    new Uint8Array([236, 180, 176]),
-    new Uint8Array([228, 196, 144]),
-    new Uint8Array([204, 210, 120]),
-    new Uint8Array([180, 222, 120,]),
-    new Uint8Array([168, 226, 144]),
-    new Uint8Array([152, 226, 180,]),
-    new Uint8Array([160, 214, 228]),
-    new Uint8Array([160, 162, 160])
+const PALETTE_RGB_TABLE: Uint8Array[] = [
+    Uint8Array.of(0x66, 0x66, 0x66),
+    Uint8Array.of(0x00, 0x2A, 0x88),
+    Uint8Array.of(0x14, 0x12, 0xA7),
+    Uint8Array.of(0x3B, 0x00, 0xA4),
+    Uint8Array.of(0x5C, 0x00, 0x7E),
+    Uint8Array.of(0x6E, 0x00, 0x40),
+    Uint8Array.of(0x6C, 0x06, 0x00),
+    Uint8Array.of(0x56, 0x1D, 0x00),
+    Uint8Array.of(0x33, 0x35, 0x00),
+    Uint8Array.of(0x0B, 0x48, 0x00),
+    Uint8Array.of(0x00, 0x52, 0x00),
+    Uint8Array.of(0x00, 0x4F, 0x08),
+    Uint8Array.of(0x00, 0x40, 0x4D),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0xAD, 0xAD, 0xAD),
+    Uint8Array.of(0x15, 0x5F, 0xD9),
+    Uint8Array.of(0x42, 0x40, 0xFF),
+    Uint8Array.of(0x75, 0x27, 0xFE),
+    Uint8Array.of(0xA0, 0x1A, 0xCC),
+    Uint8Array.of(0xB7, 0x1E, 0x7B),
+    Uint8Array.of(0xB5, 0x31, 0x20),
+    Uint8Array.of(0x99, 0x4E, 0x00),
+    Uint8Array.of(0x6B, 0x6D, 0x00),
+    Uint8Array.of(0x38, 0x87, 0x00),
+    Uint8Array.of(0x0C, 0x93, 0x00),
+    Uint8Array.of(0x00, 0x8F, 0x32),
+    Uint8Array.of(0x00, 0x7C, 0x8D),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0xFF, 0xFE, 0xFF),
+    Uint8Array.of(0x64, 0xB0, 0xFF),
+    Uint8Array.of(0x92, 0x90, 0xFF),
+    Uint8Array.of(0xC6, 0x76, 0xFF),
+    Uint8Array.of(0xF3, 0x6A, 0xFF),
+    Uint8Array.of(0xFE, 0x6E, 0xCC),
+    Uint8Array.of(0xFE, 0x81, 0x70),
+    Uint8Array.of(0xEA, 0x9E, 0x22),
+    Uint8Array.of(0xBC, 0xBE, 0x00),
+    Uint8Array.of(0x88, 0xD8, 0x00),
+    Uint8Array.of(0x5C, 0xE4, 0x30),
+    Uint8Array.of(0x45, 0xE0, 0x82),
+    Uint8Array.of(0x48, 0xCD, 0xDE),
+    Uint8Array.of(0x4F, 0x4F, 0x4F),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0xFF, 0xFE, 0xFF),
+    Uint8Array.of(0xC0, 0xDF, 0xFF),
+    Uint8Array.of(0xD3, 0xD2, 0xFF),
+    Uint8Array.of(0xE8, 0xC8, 0xFF),
+    Uint8Array.of(0xFB, 0xC2, 0xFF),
+    Uint8Array.of(0xFE, 0xC4, 0xEA),
+    Uint8Array.of(0xFE, 0xCC, 0xC5),
+    Uint8Array.of(0xF7, 0xD8, 0xA5),
+    Uint8Array.of(0xE4, 0xE5, 0x94),
+    Uint8Array.of(0xCF, 0xEF, 0x96),
+    Uint8Array.of(0xBD, 0xF4, 0xAB),
+    Uint8Array.of(0xB3, 0xF3, 0xCC),
+    Uint8Array.of(0xB5, 0xEB, 0xF2),
+    Uint8Array.of(0xB8, 0xB8, 0xB8),
+    Uint8Array.of(0x00, 0x00, 0x00),
+    Uint8Array.of(0x00, 0x00, 0x00)
 ];

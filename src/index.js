@@ -4,10 +4,10 @@ romReq.onload = function (e) {
     /** @type {ArrayBuffer} */
     let arrayBuffer = romReq.response;
     window.nes = new NES(parse_iNES(new Uint8Array(arrayBuffer)));
-    console.log("nestest loaded")
+    console.log("nestest loaded");
     ready();
 };
-romReq.open("GET", 'Super Mario Bros. (World).nes');
+romReq.open("GET", 'Donkey Kong.nes');
 romReq.responseType = "arraybuffer";
 romReq.send();
 

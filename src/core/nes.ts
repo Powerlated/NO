@@ -51,7 +51,7 @@ class NES {
     }
 
     flag_get_for_push(): number {
-        console.log("Flag for push");
+        // console.log("Flag for push");
         let val = 0;
         if (this.flag_n) val |= BIT_7; // Negative
         if (this.flag_v) val |= BIT_6; // Overflow
@@ -107,7 +107,6 @@ class NES {
 
     ppu_ppuaddr_latch = false;
     ppu_ppudata_head = 0;
-    ppu_vram = new Uint8Array(0x4000);
 
     ppu_oamaddr = 0;
     ppu_oam = new Uint8Array(0x100);
@@ -116,8 +115,8 @@ class NES {
     ppu_ppuscroll_x = 0;
     ppu_ppuscroll_y = 0;
 
-    ppu_nametable_a = new Uint8Array(1024);
-    ppu_nametable_b = new Uint8Array(1024);
+    ppu_nametable_a = new Uint8Array(1024).fill(0xFF);
+    ppu_nametable_b = new Uint8Array(1024).fill(0xFF);
 
     ppu_fetcher_state = 0;
     ppu_pattern_shift = new Uint8Array(16);

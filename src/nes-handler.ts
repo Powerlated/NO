@@ -100,7 +100,7 @@ function runFrame() {
 let frame = 0;
 function updateDebug() {
     requestAnimationFrame(updateDebug);
-    // runFrame();
+    runFrame();
 
     disasmElement.innerHTML = disassemble(nes);
 
@@ -132,5 +132,9 @@ function updateDebug() {
 
     PPU NMI Enable: ${nes.ppu_enable_nmi}
     PPU NMI Occurred: ${nes.ppu_nmi_occurred}
+
+    PPU ScrX/Y ${nes.ppu_ppuscroll_x}/${nes.ppu_ppuscroll_y}
+
+    PPU Nametable Base: ${['0x2000', '0x2400', '0x2800', '0x2C00'][nes.ppu_nametable_base_id]}
     `;
 }
