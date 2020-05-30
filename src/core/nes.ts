@@ -156,8 +156,9 @@ class NES {
     apu_cycle = false;
 
     apu_pulse1_volume = 0;
+    apu_pulse1_volume_init = 0;
     apu_pulse1_constant = false;
-    apu_pulse1_halt_length = false;
+    apu_pulse1_env_loop = false;
     apu_pulse1_duty = 0;
     apu_pulse1_sweep_shift = 0;
     apu_pulse1_sweep_negate = false;
@@ -171,8 +172,9 @@ class NES {
     apu_pulse1_pos = 0;
 
     apu_pulse2_volume = 0;
+    apu_pulse2_volume_init = 0;
     apu_pulse2_constant = false;
-    apu_pulse2_halt_length = false;
+    apu_pulse2_env_loop = false;
     apu_pulse2_duty = 0;
     apu_pulse2_sweep_shift = 0;
     apu_pulse2_sweep_negate = false;
@@ -199,6 +201,18 @@ class NES {
     apu_triangle_enable = false;
     apu_noise_enable = false;
     apu_dmc_enable = false;
+
+    apu_sequencer_5step = false;
+    apu_sequencer_no_interrupt = false;
+    apu_sequencer_clock = 0;
+    apu_sequencer_step = 0;
+
+    apu_pulse1_env_start = false
+    apu_pulse1_env_div = 0;
+
+    apu_pulse2_env_start = false
+    apu_pulse2_env_div = 0;
+
 
     controller_shift = new Uint8Array(8);
     controller_shift_pos = 0;
