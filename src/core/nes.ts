@@ -200,6 +200,21 @@ class NES {
     apu_noise_enable = false;
     apu_dmc_enable = false;
 
+    controller_shift = new Uint8Array(8);
+    controller_shift_pos = 0;
+
+    controller_poll_mode = false;
+
+    controller_a = false;
+    controller_b = false;
+    controller_select = false;
+    controller_start = false;
+    controller_up = false;
+    controller_down = false;
+    controller_left = false;
+    controller_right = false;
+
+
     patterns_img = new ImageData(new Uint8ClampedArray(256 * 128 * 4).fill(0xFF), 256, 128);
 
     iram = new Uint8Array(0x800);

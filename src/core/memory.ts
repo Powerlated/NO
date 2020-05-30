@@ -100,11 +100,20 @@ function write_mapper(nes: NES, addr: number, val: number) {
 }
 
 function io_read(nes: NES, addr: number): number {
+    switch (addr) {
+        case 0x4016:
+            return controller_read_port1(nes);
+    }
     return 0;
     throw `io_read not implemented addr:${hex(addr, 4)}`;
 }
 
 function io_write(nes: NES, addr: number, val: number): void {
+    switch (addr) {
+        case 0x4016:
+            controller_set(nes, val);
+            return;
+    }
     if (addr >= 0x4000 && addr <= 0x4013 || addr == 0x4015 || addr == 0x4017) {
         apu_io_write(nes, addr, val);
         return;
