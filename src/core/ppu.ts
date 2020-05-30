@@ -274,7 +274,7 @@ function ppu_advance_fetcher(nes: NES) {
         // Attribute table byte
         case 2:
             {
-                nes.ppu_attribute_index = ((nes.ppu_line >> 5) * 8) + (nes.ppu_pixel_x >> 5);
+                nes.ppu_attribute_index = ((nes.ppu_line >> 5) * 8) + (nes.ppu_pixel_x + nes.ppu_ppuscroll_x >> 5);
 
                 let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
                 let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index);
@@ -322,7 +322,7 @@ function ppu_advance_fetcher(nes: NES) {
 function ppu_fetcher_reset(nes: NES) {
     nes.ppu_fetcher_state = 0;
 
-    nes.ppu_nametable_index = ((nes.ppu_line >> 3) * 32) + (0 >> 3);
+    nes.ppu_nametable_index = ((nes.ppu_line >> 3) * 32) + (nes.ppu_ppuscroll_x >> 3);
     nes.ppu_pattern_shift_pos = 0;
 
     nes.ppu_attribute_shift_pos = 0;
@@ -335,23 +335,27 @@ function ppu_advance(nes: NES, cycles: number) {
     if (nes.ppu_line == 261) {
         while (cycles > 0) {
             cycles--;
+
             if (nes.ppu_line_clock == 1) {
                 if (debug)
                     console.log("NMI flag clear");
+
                 nes.ppu_nmi_occurred = false;
                 ppu_check_nmi(nes);
+                nes.ppu_sprite0hit = false;
             }
 
-            if (nes.ppu_line_clock == 320) ppu_fetcher_reset(nes);
-            if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
+            else if (nes.ppu_line_clock == 320) ppu_fetcher_reset(nes);
+            else if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
                 ppu_advance_fetcher(nes);
             }
 
-            nes.ppu_line_clock++;
-            if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock -= 341;
+            else if (nes.ppu_line_clock >= 341) {
+                nes.ppu_line_clock = 0;
                 nes.ppu_line = 0;
             }
+            nes.ppu_line_clock++;
+
         }
     }
     // Visible scanlines
@@ -359,22 +363,26 @@ function ppu_advance(nes: NES, cycles: number) {
         while (cycles > 0) {
             cycles--;
 
+            nes.ppu_line_clock++;
+
+            // TODO: Remove mock sprite 0
+            if (nes.ppu_line == 32 && nes.ppu_line_clock == 1) nes.ppu_sprite0hit = true;
+
             if (nes.ppu_line_clock > 0 && nes.ppu_line_clock < 257) {
                 ppu_advance_fetcher(nes);
                 ppu_shift_out(nes);
             }
 
-            if (nes.ppu_line_clock == 320) {
+            else if (nes.ppu_line_clock == 320) {
                 nes.ppu_line++;
                 ppu_fetcher_reset(nes);
             }
-            if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
+            else if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
                 ppu_advance_fetcher(nes);
             }
 
-            nes.ppu_line_clock++;
-            if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock -= 341;
+            else if (nes.ppu_line_clock >= 341) {
+                nes.ppu_line_clock = 0;
 
             }
         }
@@ -385,7 +393,7 @@ function ppu_advance(nes: NES, cycles: number) {
             cycles--;
             nes.ppu_line_clock++;
             if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock -= 341;
+                nes.ppu_line_clock = 0;
                 nes.ppu_line++;
             }
         }
@@ -394,6 +402,7 @@ function ppu_advance(nes: NES, cycles: number) {
     else if (nes.ppu_line >= 241 && nes.ppu_line <= 260) {
         while (cycles > 0) {
             cycles--;
+            nes.ppu_line_clock++;
             if (nes.ppu_line == 241 && nes.ppu_line_clock == 1) {
                 // console.log("Vblank hit");
                 nes.ppu_nmi_occurred = true;
@@ -402,9 +411,8 @@ function ppu_advance(nes: NES, cycles: number) {
                 // Draw the image here
                 ppu_draw(nes);
             }
-            nes.ppu_line_clock++;
-            if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock -= 341;
+            else if (nes.ppu_line_clock >= 341) {
+                nes.ppu_line_clock = 0;
                 nes.ppu_line++;
             }
         }
