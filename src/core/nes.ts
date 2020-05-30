@@ -207,12 +207,18 @@ class NES {
     apu_sequencer_clock = 0;
     apu_sequencer_step = 0;
 
-    apu_pulse1_env_start = false
+    apu_pulse1_env_start = false;
     apu_pulse1_env_div = 0;
 
-    apu_pulse2_env_start = false
+    apu_pulse2_env_start = false;
     apu_pulse2_env_div = 0;
 
+    apu_pulse1_sweep_muted = false;
+    apu_pulse1_sweep_div = 0;
+    apu_pulse1_sweep_reload = false;
+    apu_pulse2_sweep_muted = false;
+    apu_pulse2_sweep_div = 0;
+    apu_pulse2_sweep_reload = false;
 
     controller_shift = new Uint8Array(8);
     controller_shift_pos = 0;

@@ -13,7 +13,55 @@ const TRIANGLE_SEQ = Uint8Array.of(
 const player = new SoundPlayer();
 
 function apu_half_frame(nes: NES) {
+    if (nes.apu_pulse1_sweep_enabled) {
+        if (nes.apu_pulse1_sweep_div <= 0 || nes.apu_pulse1_sweep_reload) {
+            nes.apu_pulse1_sweep_reload = false;
+            nes.apu_pulse1_sweep_div = nes.apu_pulse1_sweep_divider_period;
 
+            let period = ((nes.apu_pulse1_timer_high << 8) | nes.apu_pulse1_timer_low);
+            let change = period >> nes.apu_pulse1_sweep_shift;
+            // Pulse 1 uses one's complement for negate, so extra -1
+            if (nes.apu_pulse1_sweep_negate) {
+                change *= -1;
+                change -= 1;
+            }
+
+            let new_period = change + period;
+
+            if (new_period > 0x7FF) {
+                nes.apu_pulse1_sweep_muted = true;
+            }
+
+            nes.apu_pulse1_timer_high = (new_period >> 8) & 0b111;
+            nes.apu_pulse1_timer_low = (new_period >> 0) & 0xFF;
+        } else {
+            nes.apu_pulse1_sweep_div--;
+        }
+    }
+    if (nes.apu_pulse2_sweep_enabled) {
+        if (nes.apu_pulse2_sweep_div <= 0 || nes.apu_pulse2_sweep_reload) {
+            nes.apu_pulse2_sweep_reload = false;
+            nes.apu_pulse2_sweep_div = nes.apu_pulse2_sweep_divider_period;
+
+            let period = ((nes.apu_pulse2_timer_high << 8) | nes.apu_pulse2_timer_low);
+            let change = period >> nes.apu_pulse2_sweep_shift;
+            if (nes.apu_pulse2_sweep_negate) {
+                change *= -1;
+            }
+
+            let new_period = change + period;
+
+            if (new_period > 0x7FF) {
+                nes.apu_pulse2_sweep_muted = true;
+            }
+
+            nes.apu_pulse2_timer_high = (new_period >> 8) & 0b111;
+            nes.apu_pulse2_timer_low = (new_period >> 0) & 0xFF;
+
+        } else {
+            nes.apu_pulse2_sweep_div--;
+        }
+    }
 }
 
 function apu_quarter_frame(nes: NES) {
@@ -167,14 +215,14 @@ function apu_advance(nes: NES, cycles: number) {
 
         let sample = 0;
 
-        if (nes.apu_pulse1_enable) {
+        if (nes.apu_pulse1_enable && !nes.apu_pulse1_sweep_muted) {
             if (nes.apu_pulse1_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume_init / 15);
             } else {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume / 15);
             }
         }
-        if (nes.apu_pulse2_enable) {
+        if (nes.apu_pulse2_enable && !nes.apu_pulse1_sweep_muted) {
             if (nes.apu_pulse2_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse2_duty][nes.apu_pulse2_pos] * (nes.apu_pulse2_volume_init / 15);
             } else {
@@ -210,6 +258,8 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_pulse1_sweep_negate = bit_test(val, 3);
             nes.apu_pulse1_sweep_divider_period = (val >> 4) & 0b111;
             nes.apu_pulse1_sweep_enabled = bit_test(val, 7);
+
+            nes.apu_pulse1_sweep_reload = true;
             break;
         case 0x4002:
             nes.apu_pulse1_timer_low = val;
@@ -220,6 +270,7 @@ function apu_io_write(nes: NES, addr: number, val: number) {
 
             nes.apu_pulse1_env_start = true;
             nes.apu_pulse1_pos = 0;
+            nes.apu_pulse1_sweep_muted = false;
             break;
 
         case 0x4004:
@@ -233,6 +284,8 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_pulse2_sweep_negate = bit_test(val, 3);
             nes.apu_pulse2_sweep_divider_period = (val >> 4) & 0b111;
             nes.apu_pulse2_sweep_enabled = bit_test(val, 7);
+
+            nes.apu_pulse2_sweep_reload = true;
             break;
         case 0x4006:
             nes.apu_pulse2_timer_low = val;
@@ -243,6 +296,7 @@ function apu_io_write(nes: NES, addr: number, val: number) {
 
             nes.apu_pulse2_env_start = true;
             nes.apu_pulse2_pos = 0;
+            nes.apu_pulse2_sweep_muted = false;
             break;
 
         case 0x4008:
