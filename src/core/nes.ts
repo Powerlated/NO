@@ -124,6 +124,7 @@ class NES {
     ppu_attribute_shift = new Uint8Array(8);
     ppu_attribute_shift_pos = 0;
     ppu_pixel_x = 0;
+    ppu_fine_x = 0;
 
     ppu_nametable_index_start = 0;
     ppu_nametable_index_offset = 0;

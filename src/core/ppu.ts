@@ -75,6 +75,7 @@ function ppu_write_ppuaddr(nes: NES, val: number) {
 }
 
 function ppu_read_ppudata(nes: NES): number {
+    console.log('read buffer');
     const val = ppu_read_vram(nes, nes.ppu_ppudata_head & 0x3FFF);
     if (nes.ppu_ppudata_access_inc) {
         nes.ppu_ppudata_head += 32;
@@ -225,7 +226,7 @@ function ppu_shift_out(nes: NES) {
 
         let index = 4 * (nes.ppu_pixel_x + (256 * nes.ppu_line));
 
-        if (nes.ppu_pixel_x < 256) {
+        if (nes.ppu_pixel_x >= 0) {
             if (pattern_val != 0) {
                 nes.ppu_img.data[index + 0] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][0];
                 nes.ppu_img.data[index + 1] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][1];
@@ -283,7 +284,7 @@ function ppu_advance_fetcher(nes: NES) {
         case 2:
             {
                 let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
-                let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 3));
+                let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 2));
 
 
                 nes.ppu_attribute_index_offset++;
@@ -293,7 +294,7 @@ function ppu_advance_fetcher(nes: NES) {
                 }
 
                 // if ((nes.ppu_line & 0b1111) >= 8) attrtable_byte >>= 4;
-                // if ((nes.ppu_pixel_x & 0b1111) >= 8) attrtable_byte >>= 2;
+                // if (nes.ppu_attribute_index_offset & 1) attrtable_byte >>= 2;
 
                 nes.ppu_attribute_val = attrtable_byte & 3;
             }
@@ -339,12 +340,14 @@ function ppu_fetcher_reset(nes: NES) {
     nes.ppu_nametable_index_offset = (nes.ppu_ppuscroll_x >> 3);
 
     nes.ppu_attribute_index_start = ((nes.ppu_line >> 5) * 8);
-    nes.ppu_attribute_index_offset = (nes.ppu_pixel_x + nes.ppu_ppuscroll_x >> 5);
+    nes.ppu_attribute_index_offset = (nes.ppu_ppuscroll_x >> 3);
+
+    nes.ppu_fine_x = nes.ppu_ppuscroll_x & 7;
 
     nes.ppu_pattern_shift_pos = 0;
     nes.ppu_attribute_shift_pos = 0;
 
-    nes.ppu_pixel_x = 0;
+    nes.ppu_pixel_x = -nes.ppu_fine_x;
 }
 
 function ppu_advance(nes: NES, cycles: number) {
