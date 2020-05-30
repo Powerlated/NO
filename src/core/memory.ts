@@ -105,6 +105,10 @@ function io_read(nes: NES, addr: number): number {
 }
 
 function io_write(nes: NES, addr: number, val: number): void {
+    if (addr >= 0x4000 && addr <= 0x4013 || addr == 0x4015 || addr == 0x4017) {
+        apu_io_write(nes, addr, val);
+        return;
+    }
     return;
     throw `io_write not implemented addr:${hex(addr, 4)} val:${hex(val, 2)}`;
 }

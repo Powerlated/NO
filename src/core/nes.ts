@@ -149,9 +149,61 @@ class NES {
     ];
     ppu_img = new ImageData(new Uint8ClampedArray(256 * 240 * 4).fill(0xFF), 256, 240);
 
+    apu_buffer = new Float32Array(2048);
+    apu_buffer_pos = 0;
+    apu_sample_timer = 0;
+
+    apu_cycle = false;
+
+    apu_pulse1_volume = 0;
+    apu_pulse1_constant = false;
+    apu_pulse1_halt_length = false;
+    apu_pulse1_duty = 0;
+    apu_pulse1_sweep_shift = 0;
+    apu_pulse1_sweep_negate = false;
+    apu_pulse1_sweep_divider_period = 0;
+    apu_pulse1_sweep_enabled = false;
+    apu_pulse1_timer_low = 0;
+    apu_pulse1_timer_high = 0;
+    apu_pulse1_length_load = 0;
+
+    apu_pulse1_timer = 0;
+    apu_pulse1_pos = 0;
+
+    apu_pulse2_volume = 0;
+    apu_pulse2_constant = false;
+    apu_pulse2_halt_length = false;
+    apu_pulse2_duty = 0;
+    apu_pulse2_sweep_shift = 0;
+    apu_pulse2_sweep_negate = false;
+    apu_pulse2_sweep_divider_period = 0;
+    apu_pulse2_sweep_enabled = false;
+    apu_pulse2_timer_low = 0;
+    apu_pulse2_timer_high = 0;
+    apu_pulse2_length_load = 0;
+
+    apu_pulse2_timer = 0;
+    apu_pulse2_pos = 0;
+
+    apu_triangle_counter_reload = 0;
+    apu_triangle_control = false;
+    apu_triangle_timer_low = 0;
+    apu_triangle_timer_high = 0;
+    apu_triangle_length_load = 0;
+
+    apu_triangle_timer = 0;
+    apu_triangle_pos = 0;
+
+    apu_pulse1_enable = false;
+    apu_pulse2_enable = false;
+    apu_triangle_enable = false;
+    apu_noise_enable = false;
+    apu_dmc_enable = false;
+
     patterns_img = new ImageData(new Uint8ClampedArray(256 * 128 * 4).fill(0xFF), 256, 128);
 
     iram = new Uint8Array(0x800);
+
 
 
 }
@@ -159,4 +211,5 @@ class NES {
 function nes_tick(nes: NES, cycles: number) {
     nes.cycles += cycles;
     ppu_advance(nes, cycles * 3);
+    apu_advance(nes, cycles);
 }
