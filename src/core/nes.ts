@@ -125,12 +125,15 @@ class NES {
     ppu_attribute_shift_pos = 0;
     ppu_pixel_x = 0;
 
-    ppu_nametable_index = 0;
+    ppu_nametable_index_start = 0;
+    ppu_nametable_index_offset = 0;
     ppu_nametable_val = 0;
     ppu_attribute_val = 0;
-    ppu_attribute_index = 0;
     ppu_pattern_lower_byte = 0;
     ppu_pattern_upper_byte = 0;
+
+    ppu_attribute_index_start = 0;
+    ppu_attribute_index_offset = 0;
 
     ppu_universal_bg_col = new Uint8Array(3);
 
