@@ -75,8 +75,8 @@ function ppu_write_ppuaddr(nes: NES, val: number) {
 }
 
 function ppu_read_ppudata(nes: NES): number {
-    console.log('read buffer');
-    const val = ppu_read_vram(nes, nes.ppu_ppudata_head & 0x3FFF);
+    const val = nes.ppu_ppudata_read_val;
+    nes.ppu_ppudata_read_val = ppu_read_vram(nes, nes.ppu_ppudata_head & 0x3FFF);
     if (nes.ppu_ppudata_access_inc) {
         nes.ppu_ppudata_head += 32;
         nes.ppu_ppudata_head &= 0x3FFF;

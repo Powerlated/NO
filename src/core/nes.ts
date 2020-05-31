@@ -126,6 +126,20 @@ class NES {
     ppu_pixel_x = 0;
     ppu_fine_x = 0;
 
+    ppu_sprite_pattern_shift: Uint8Array[] = [
+        new Uint8Array(8),
+        new Uint8Array(8),
+        new Uint8Array(8),
+        new Uint8Array(8),
+        new Uint8Array(8),
+        new Uint8Array(8),
+        new Uint8Array(8),
+        new Uint8Array(8),
+    ];
+    ppu_sprite_pattern_shift_pos = new Uint8Array(8);
+    ppu_sprite_xpos = new Uint8Array(8);
+    ppu_sprite_attrs = new Uint8Array(8);
+
     ppu_nametable_index_start = 0;
     ppu_nametable_index_offset = 0;
     ppu_nametable_val = 0;
@@ -135,6 +149,8 @@ class NES {
 
     ppu_attribute_index_start = 0;
     ppu_attribute_index_offset = 0;
+
+    ppu_ppudata_read_val = 0;
 
     ppu_universal_bg_col = new Uint8Array(3);
 
