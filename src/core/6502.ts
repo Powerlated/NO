@@ -13,7 +13,7 @@ function cpu_execute(nes: NES): number {
         console.log(hex(opcode, 2));
     }
 
-    cpu_dispatch(nes, opcode);
+    DISPATCH[opcode](nes, opcode);
     cpu_intr_check(nes);
 
     bounds_check(nes.reg_a, 0, 0xFF, "A");
@@ -28,8 +28,8 @@ function cpu_intr_check(nes: NES) {
     if (nes.nmi_queued) {
         nes.nmi_queued = false;
 
-        if (debug)                         
-            console.log("Dispatching NMI"); 
+        if (debug)
+            console.log("Dispatching NMI");
 
         cpu_push16(nes, nes.reg_pc);
         cpu_push8(nes, nes.flag_get_for_push());
@@ -52,32 +52,38 @@ function bounds_check(i: number, lower: number, upper: number, desc: string) {
         `;
 }
 
-function cpu_dispatch(nes: NES, opcode: number): void {
+const DISPATCH: ((nes: NES, opcode: number) => void)[] = [];
+
+for (let opcode = 0; opcode < 256; opcode++) {
+    DISPATCH[opcode] = cpu_get_dispatch(opcode);
+}
+
+function cpu_get_dispatch(opcode: number): (nes: NES, opcode: number) => void {
     // Single-byte instructions
     switch (opcode) {
-        case 0x78: SEI(nes, opcode); return;
-        case 0x20: JSR(nes, opcode); return;
-        case 0xEA: NOP(nes, opcode); return;
-        case 0x38: SEC(nes, opcode); return;
-        case 0x18: CLC(nes, opcode); return;
-        case 0x60: RTS(nes, opcode); return;
-        case 0xF8: SED(nes, opcode); return;
-        case 0x68: PLA(nes, opcode); return;
-        case 0x08: PHP(nes, opcode); return;
-        case 0xD8: CLD(nes, opcode); return;
-        case 0x48: PHA(nes, opcode); return;
-        case 0x28: PLP(nes, opcode); return;
-        case 0xB8: CLV(nes, opcode); return;
-        case 0xC8: INY(nes, opcode); return;
-        case 0xE8: INX(nes, opcode); return;
-        case 0x88: DEY(nes, opcode); return;
-        case 0xCA: DEX(nes, opcode); return;
-        case 0xA8: TAY(nes, opcode); return;
-        case 0x98: TYA(nes, opcode); return;
-        case 0x8A: TXA(nes, opcode); return;
-        case 0x9A: TXS(nes, opcode); return;
-        case 0xBA: TSX(nes, opcode); return;
-        case 0x40: RTI(nes, opcode); return;
+        case 0x78: return SEI;
+        case 0x20: return JSR;
+        case 0xEA: return NOP;
+        case 0x38: return SEC;
+        case 0x18: return CLC;
+        case 0x60: return RTS;
+        case 0xF8: return SED;
+        case 0x68: return PLA;
+        case 0x08: return PHP;
+        case 0xD8: return CLD;
+        case 0x48: return PHA;
+        case 0x28: return PLP;
+        case 0xB8: return CLV;
+        case 0xC8: return INY;
+        case 0xE8: return INX;
+        case 0x88: return DEY;
+        case 0xCA: return DEX;
+        case 0xA8: return TAY;
+        case 0x98: return TYA;
+        case 0x8A: return TXA;
+        case 0x9A: return TXS;
+        case 0xBA: return TSX;
+        case 0x40: return RTI;
 
         case 0x1A:
         case 0x3A:
@@ -85,7 +91,7 @@ function cpu_dispatch(nes: NES, opcode: number): void {
         case 0x7A:
         case 0xDA:
         case 0xFA:
-            INVALID_NOP(nes, opcode); return;
+            return INVALID_NOP;
 
         case 0x04:
         case 0x44:
@@ -98,7 +104,7 @@ function cpu_dispatch(nes: NES, opcode: number): void {
         case 0xD4:
         case 0xF4:
         case 0x80:
-            INVALID_NOP_2BYTE(nes, opcode); return;
+            return INVALID_NOP_2BYTE;
 
         case 0x0C:
         case 0x1C:
@@ -107,7 +113,7 @@ function cpu_dispatch(nes: NES, opcode: number): void {
         case 0x7C:
         case 0xDC:
         case 0xFC:
-            INVALID_NOP_3BYTE(nes, opcode); return;
+            return INVALID_NOP_3BYTE;
 
         case 0xAF:
         case 0xBF:
@@ -115,7 +121,7 @@ function cpu_dispatch(nes: NES, opcode: number): void {
         case 0xB7:
         case 0xA3:
         case 0xB3:
-            LAX(nes, opcode); return;
+            return LAX;
     }
 
     // Conditional branch instructions
@@ -125,17 +131,17 @@ function cpu_dispatch(nes: NES, opcode: number): void {
 
         if (set) {
             switch (condition) {
-                case 0b00: BMI(nes, opcode); return; // Negative Set
-                case 0b01: BVS(nes, opcode); return; // Overflow Set
-                case 0b10: BCS(nes, opcode); return; // Carry Set
-                case 0b11: BEQ(nes, opcode); return; // Zero Set
+                case 0b00: return BMI; // Negative Set
+                case 0b01: return BVS; // Overflow Set
+                case 0b10: return BCS; // Carry Set
+                case 0b11: return BEQ; // Zero Set
             }
         } else {
             switch (condition) {
-                case 0b00: BPL(nes, opcode); return; // Negative Clear
-                case 0b01: BVC(nes, opcode); return; // Overflow Clear
-                case 0b10: BCC(nes, opcode); return; // Carry Clear
-                case 0b11: BNE(nes, opcode); return; // Zero Clear
+                case 0b00: return BPL; // Negative Clear
+                case 0b01: return BVC; // Overflow Clear
+                case 0b10: return BCC; // Carry Clear
+                case 0b11: return BNE; // Zero Clear
             }
         }
     }
@@ -149,41 +155,45 @@ function cpu_dispatch(nes: NES, opcode: number): void {
     switch (opcode & 0b11) {
         case 0b00:
             switch (a) {
-                case 0b001: BIT(nes, opcode); return;
-                case 0b010: JMP_ABS(nes, opcode); return;
-                case 0b011: JMP_REL(nes, opcode); return;
-                case 0b100: STY(nes, opcode); return;
-                case 0b101: LDY(nes, opcode); return;
-                case 0b110: CPY(nes, opcode); return;
-                case 0b111: CPX(nes, opcode); return;
+                case 0b001: return BIT;
+                case 0b010: return JMP_ABS;
+                case 0b011: return JMP_REL;
+                case 0b100: return STY;
+                case 0b101: return LDY;
+                case 0b110: return CPY;
+                case 0b111: return CPX;
             }
             break;
         case 0b01:
             switch (a) {
-                case 0b000: ORA(nes, opcode); return;
-                case 0b001: AND(nes, opcode); return;
-                case 0b010: EOR(nes, opcode); return;
-                case 0b011: ADC(nes, opcode); return;
-                case 0b100: STA(nes, opcode); return;
-                case 0b101: LDA(nes, opcode); return;
-                case 0b110: CMP(nes, opcode); return;
-                case 0b111: SBC(nes, opcode); return;
+                case 0b000: return ORA;
+                case 0b001: return AND;
+                case 0b010: return EOR;
+                case 0b011: return ADC;
+                case 0b100: return STA;
+                case 0b101: return LDA;
+                case 0b110: return CMP;
+                case 0b111: return SBC;
             }
             break;
         case 0b10:
             switch (a) {
-                case 0b000: ASL(nes, opcode); return;
-                case 0b001: ROL(nes, opcode); return;
-                case 0b010: LSR(nes, opcode); return;
-                case 0b011: ROR(nes, opcode); return;
-                case 0b100: STX(nes, opcode); return;
-                case 0b101: LDX(nes, opcode); return;
-                case 0b110: DEC(nes, opcode); return;
-                case 0b111: INC(nes, opcode); return;
+                case 0b000: return ASL;
+                case 0b001: return ROL;
+                case 0b010: return LSR;
+                case 0b011: return ROR;
+                case 0b100: return STX;
+                case 0b101: return LDX;
+                case 0b110: return DEC;
+                case 0b111: return INC;
             }
             break;
     }
 
+    return UNIMPLEMENTED;
+}
+
+function UNIMPLEMENTED(nes: NES, opcode: number): void {
     throw `Unimplemented opcode: ${hex(opcode, 2)}`;
 }
 
@@ -670,7 +680,8 @@ function SEI(nes: NES, opcode: number) {
 }
 
 function JMP_REL(nes: NES, opcode: number) {
-    console.log("Relative jump");
+    if (debug)
+        console.log("Relative jump");
 
     const lowSrc = cpu_read_tick_inc(nes);
     const highSrc = cpu_read_tick_inc(nes);
