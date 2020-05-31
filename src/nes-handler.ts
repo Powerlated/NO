@@ -18,6 +18,80 @@ window.onkeydown = (e: KeyboardEvent) => {
         case 'f':
             runFrame();
     }
+
+    switch (e.key.toLowerCase()) {
+        case "arrowleft":
+            nes.controller_left = true;
+            e.preventDefault();
+            break;
+        case "arrowup":
+            nes.controller_up = true;
+            e.preventDefault();
+            break;
+        case "arrowright":
+            nes.controller_right = true;
+            e.preventDefault();
+            break;
+        case "arrowdown":
+            nes.controller_down = true;
+            e.preventDefault();
+            break;
+
+        case "x":
+            nes.controller_a = true;
+            e.preventDefault();
+            break;
+        case "z":
+            nes.controller_b = true;
+            e.preventDefault();
+            break;
+        case "enter":
+            nes.controller_start = true;
+            e.preventDefault();
+            break;
+        case "\\":
+            nes.controller_select = true;
+            e.preventDefault();
+            break;
+    }
+};
+
+window.onkeyup = (e: KeyboardEvent) => {
+    switch (e.key.toLowerCase()) {
+        case "arrowleft":
+            nes.controller_left = false;
+            e.preventDefault();
+            break;
+        case "arrowup":
+            nes.controller_up = false;
+            e.preventDefault();
+            break;
+        case "arrowright":
+            nes.controller_right = false;
+            e.preventDefault();
+            break;
+        case "arrowdown":
+            nes.controller_down = false;
+            e.preventDefault();
+            break;
+
+        case "x":
+            nes.controller_a = false;
+            e.preventDefault();
+            break;
+        case "z":
+            nes.controller_b = false;
+            e.preventDefault();
+            break;
+        case "enter":
+            nes.controller_start = false;
+            e.preventDefault();
+            break;
+        case "\\":
+            nes.controller_select = false;
+            e.preventDefault();
+            break;
+    }
 };
 
 function exec_num(max: number) {
@@ -25,10 +99,17 @@ function exec_num(max: number) {
         cpu_execute(nes);
 }
 
+function exec_cycles(max: number) {
+    let cycles = 0;
+    while (cycles < max) {
+        cycles += cpu_execute(nes);
+    }
+}
+
 let checkErrors = false;
 let logLine = 1;
 function step() {
-    cpu_execute(nes);
+    let cycles = cpu_execute(nes);
 
     if (checkErrors) {
         let logPc = `0x${nestest_log[logLine].slice(0, 4)}`;
@@ -80,6 +161,8 @@ function step() {
 
         logLine++;
     }
+
+    return cycles;
 }
 
 let disasmElement = document.getElementById('disasm')!;
@@ -92,27 +175,17 @@ function ready() {
 function runFrame() {
     const frameMax = 89341.5 / 3;
     let cycles = 0;
-    while (cycles <= frameMax) {
-        cycles += cpu_execute(nes);
+    while (cycles <= frameMax && !errored) {
+        cycles += step();
     }
 }
 
 let frame = 0;
 function updateDebug() {
     requestAnimationFrame(updateDebug);
-    runFrame();
+    runEmulator();
 
     disasmElement.innerHTML = disassemble(nes);
-
-    if (frame < 2 && !errored) {
-        try {
-            runFrame();
-        } catch (e) {
-            errored = true;
-            console.error(e);
-        }
-    }
-    frame++;
 
     debugElement.innerText = `
     Cycles: ${nes.cycles}
@@ -125,7 +198,7 @@ function updateDebug() {
     X: ${hex(nes.reg_x, 2)}
     Y: ${hex(nes.reg_y, 2)}
 
-    PPU Addr Head: ${nes.ppu_ppudata_head}
+    PPU Addr Head: ${hex(nes.ppu_ppudata_head, 4)}
 
     PPU Line: ${nes.ppu_line}
     PPU Line Dot: ${nes.ppu_line_clock}
@@ -133,8 +206,46 @@ function updateDebug() {
     PPU NMI Enable: ${nes.ppu_enable_nmi}
     PPU NMI Occurred: ${nes.ppu_nmi_occurred}
 
+    PPU Sprite 0 Hit: ${nes.ppu_sprite0hit}
+
     PPU ScrX/Y ${nes.ppu_ppuscroll_x}/${nes.ppu_ppuscroll_y}
 
     PPU Nametable Base: ${['0x2000', '0x2400', '0x2800', '0x2C00'][nes.ppu_nametable_base_id]}
     `;
+}
+
+let lastTime = 0;
+function runEmulator() {
+    const now = performance.now();
+    let deltaMs = now - lastTime;
+    if (deltaMs > 17) {
+        deltaMs = 17;
+    }
+    lastTime = now;
+
+    let max = 1789.773 * deltaMs;
+
+    exec_cycles(max);
+}
+
+
+
+
+
+function download_log() {
+    let string = log.join('\n');
+    download('nes-optime.log', string);
+}
+
+function download(filename: string, text: string) {
+    let anchor = document.createElement('a');
+    anchor.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    anchor.setAttribute('download', filename);
+
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+
+    anchor.click();
+
+    document.body.removeChild(anchor);
 }

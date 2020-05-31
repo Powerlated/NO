@@ -43,16 +43,16 @@ function hexN_LC(i: any, digits: number) {
     return pad(i.toString(16), digits, '0');
 }
 
-function pad(n: string, width: number, z: string) {
-    z = z || '0';
-    n = n + '';
-    return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+function pad(input: string, width: number, char: string) {
+    char = char || '0';
+    input = input + '';
+    return input.length >= width ? input : new Array(width - input.length + 1).join(char) + input;
 }
 
-function r_pad(n: string, width: number, z: string) {
-    z = z || '0';
-    n = n + '';
-    return n.length >= width ? n : n + new Array(width - n.length + 1).join(z);
+function r_pad(input: string, width: number, char: string) {
+    char = char || '0';
+    input = input + '';
+    return input.length >= width ? input : input + new Array(width - input.length + 1).join(char);
 }
 
 function assert(n1: any, n2: any, reason: string) {

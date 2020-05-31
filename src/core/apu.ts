@@ -28,9 +28,9 @@ function apu_half_frame(nes: NES) {
 
             let new_period = change + period;
 
-            if (new_period > 0x7FF) {
-                nes.apu_pulse1_sweep_muted = true;
-            }
+            // if (new_period > 0x7FF) {
+            //     nes.apu_pulse1_sweep_muted = true;
+            // }
 
             nes.apu_pulse1_timer_high = (new_period >> 8) & 0b111;
             nes.apu_pulse1_timer_low = (new_period >> 0) & 0xFF;
@@ -51,9 +51,9 @@ function apu_half_frame(nes: NES) {
 
             let new_period = change + period;
 
-            if (new_period > 0x7FF) {
-                nes.apu_pulse2_sweep_muted = true;
-            }
+            // if (new_period > 0x7FF) {
+            //     nes.apu_pulse2_sweep_muted = true;
+            // }
 
             nes.apu_pulse2_timer_high = (new_period >> 8) & 0b111;
             nes.apu_pulse2_timer_low = (new_period >> 0) & 0xFF;

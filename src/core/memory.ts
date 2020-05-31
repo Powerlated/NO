@@ -66,7 +66,10 @@ function mem_write(nes: NES, addr: number, val: number): void {
 function read_mapper(nes: NES, addr: number) {
     switch (nes.cart.mapper) {
         case 0:
-            if (addr >= 0x6000 && addr <= 0x7FFF) {
+            if (addr >= 0x4020 && addr <= 0x5FFF) {
+                return 0;
+            }
+            else if (addr >= 0x6000 && addr <= 0x7FFF) {
                 throw 'Mapper 0: Family Basic PRG RAM read';
             }
 
@@ -85,7 +88,7 @@ function read_mapper(nes: NES, addr: number) {
                     return nes.cart.prg_rom_data[addr - 0xC000];
                 }
             }
-            throw `Mapper 0: read_mapper out of bounds`;
+            throw `Mapper 0: read_mapper out of bounds addr${hex(addr, 4)}`;
             break;
     }
     throw `Mapper ${nes.cart.mapper}: not implemented`;

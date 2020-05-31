@@ -5,3 +5,4 @@ src/disassembler.js
 src/nes-handler.js
 
 src/**/*.nes
+src/**/*.log

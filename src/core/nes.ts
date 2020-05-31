@@ -151,6 +151,7 @@ class NES {
     ppu_attribute_index_offset = 0;
 
     ppu_ppudata_read_val = 0;
+    ppu_first_shift = false;
 
     ppu_universal_bg_col = new Uint8Array(3);
 

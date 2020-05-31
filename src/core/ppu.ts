@@ -220,22 +220,28 @@ function ppu_shift_out(nes: NES) {
         nes.ppu_pattern_shift_pos--;
         nes.ppu_attribute_shift_pos--;
 
+        if (nes.ppu_first_shift) {
+            nes.ppu_first_shift = false;
+            for (let i = 0; i < nes.ppu_fine_x; i++) {
+                nes.ppu_pattern_shift_pos--;
+                nes.ppu_attribute_shift_pos--;
+            }
+        }
+
         let pattern_val = nes.ppu_pattern_shift[nes.ppu_pattern_shift_pos];
         let attribute_val = nes.ppu_attribute_shift[nes.ppu_attribute_shift_pos];
 
 
         let index = 4 * (nes.ppu_pixel_x + (256 * nes.ppu_line));
 
-        if (nes.ppu_pixel_x >= 0) {
-            if (pattern_val != 0) {
-                nes.ppu_img.data[index + 0] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][0];
-                nes.ppu_img.data[index + 1] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][1];
-                nes.ppu_img.data[index + 2] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][2];
-            } else {
-                nes.ppu_img.data[index + 0] = nes.ppu_universal_bg_col[0];
-                nes.ppu_img.data[index + 1] = nes.ppu_universal_bg_col[1];
-                nes.ppu_img.data[index + 2] = nes.ppu_universal_bg_col[2];
-            }
+        if (pattern_val != 0) {
+            nes.ppu_img.data[index + 0] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][0];
+            nes.ppu_img.data[index + 1] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][1];
+            nes.ppu_img.data[index + 2] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][2];
+        } else {
+            nes.ppu_img.data[index + 0] = nes.ppu_universal_bg_col[0];
+            nes.ppu_img.data[index + 1] = nes.ppu_universal_bg_col[1];
+            nes.ppu_img.data[index + 2] = nes.ppu_universal_bg_col[2];
         }
 
         // nes.ppu_img.data[index + 0] = table_2bpp_to_8bpp[pattern_val];
@@ -272,7 +278,6 @@ function ppu_advance_fetcher(nes: NES) {
                 let nametable_base = [0x2000, 0x2400, 0x2800, 0x2C00][nes.ppu_nametable_base_id];
                 nes.ppu_nametable_val = ppu_read_vram(nes, nametable_base + nes.ppu_nametable_index_start + nes.ppu_nametable_index_offset);
 
-
                 nes.ppu_nametable_index_offset++;
                 if (nes.ppu_nametable_index_offset > 31) {
                     nes.ppu_nametable_index_offset = 0;
@@ -286,17 +291,16 @@ function ppu_advance_fetcher(nes: NES) {
                 let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
                 let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 2));
 
-
                 nes.ppu_attribute_index_offset++;
                 if (nes.ppu_attribute_index_offset > 31) {
                     nes.ppu_attribute_index_offset = 0;
                     nes.ppu_attribute_index_start += 0x400;
                 }
 
-                // if ((nes.ppu_line & 0b1111) >= 8) attrtable_byte >>= 4;
-                // if (nes.ppu_attribute_index_offset & 1) attrtable_byte >>= 2;
+                if ((nes.ppu_line & 0b10000)) attrtable_byte >>= 4;
+                if (!(nes.ppu_attribute_index_offset & 0b10)) attrtable_byte >>= 2;
 
-                nes.ppu_attribute_val = attrtable_byte & 3;
+                nes.ppu_attribute_val = attrtable_byte & 0b11;
             }
             break;
         // Pattern table tile lower
@@ -347,7 +351,8 @@ function ppu_fetcher_reset(nes: NES) {
     nes.ppu_pattern_shift_pos = 0;
     nes.ppu_attribute_shift_pos = 0;
 
-    nes.ppu_pixel_x = -nes.ppu_fine_x;
+    nes.ppu_first_shift = true;
+    nes.ppu_pixel_x = 0;
 }
 
 function ppu_advance(nes: NES, cycles: number) {

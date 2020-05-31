@@ -17,7 +17,7 @@ logReq.onload = function (e) {
     let text = logReq.responseText;
     window.nestest_log = text.split('\n');
 };
-logReq.open("GET", 'nestest.log');
+logReq.open("GET", '01-basics.log');
 logReq.responseType = 'text';
 logReq.send();
 

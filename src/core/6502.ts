@@ -1,5 +1,7 @@
 const debug = false;
 
+let log: string[] = [];
+
 function cpu_execute(nes: NES): number {
     const prev_cycles = nes.cycles;
 
@@ -7,19 +9,67 @@ function cpu_execute(nes: NES): number {
         console.log(`PC: ${hex(nes.reg_pc, 4)}`);
     }
 
+    const debug_pc = nes.reg_pc;
+    const debug_0 = mem_read_debug(nes, debug_pc + 0);
+    const debug_1 = mem_read_debug(nes, debug_pc + 1);
+    const debug_2 = mem_read_debug(nes, debug_pc + 2);
+
+    const debug_a = nes.reg_a;
+    const debug_x = nes.reg_x;
+    const debug_y = nes.reg_y;
+    const debug_sp = nes.reg_sp;
+    const debug_p = nes.flag_get();
+
     const opcode = cpu_read_tick_inc(nes);
 
     if (debug) {
         console.log(hex(opcode, 2));
     }
 
-    DISPATCH[opcode](nes, opcode);
+    let func = DISPATCH[opcode];
+
+    func(nes, opcode);
     cpu_intr_check(nes);
 
     bounds_check(nes.reg_a, 0, 0xFF, "A");
     bounds_check(nes.reg_x, 0, 0xFF, "X");
     bounds_check(nes.reg_y, 0, 0xFF, "Y");
     bounds_check(cpu_sp_get(nes), 0x100, 0x1FF, "SP");
+
+    return nes.cycles - prev_cycles;
+
+    let length = nes.reg_pc - debug_pc;
+
+    let s1 = length == 1 || length == 2 || length == 3;
+    let s2 = length == 2 || length == 3;
+    let s3 = length == 3;
+
+    if (func == JMP_ABS || func == JMP_REL || func == JSR) {
+        s1 = true;
+        s2 = true;
+        s3 = true;
+    }
+
+    if (
+        func == BMI ||
+        func == BVS ||
+        func == BCS ||
+        func == BEQ ||
+        func == BPL ||
+        func == BVC ||
+        func == BCC ||
+        func == BNE
+    ) {
+        s1 = true;
+        s2 = true;
+    }
+
+    let log_line =
+        r_pad(`${hexN(debug_pc, 4)}  ${s1 ? hexN(debug_0, 2) : '  '} ${s2 ? hexN(debug_1, 2) : '  '} ${s3 ? hexN(debug_2, 2) : '  '}  ${hexN(func.name, 2)}`, 40, ' ');
+    log_line +=
+        `A:${hexN(debug_a, 2)} X:${hexN(debug_x, 2)} Y:${hexN(debug_y, 2)} P:${hexN(debug_p, 2)} SP:${hexN(debug_sp, 2)}`;
+
+    log.push(log_line);
 
     return nes.cycles - prev_cycles;
 }
@@ -194,7 +244,7 @@ function cpu_get_dispatch(opcode: number): (nes: NES, opcode: number) => void {
 }
 
 function UNIMPLEMENTED(nes: NES, opcode: number): void {
-    throw `Unimplemented opcode: ${hex(opcode, 2)}`;
+    console.error(`Unimplemented opcode: ${hex(opcode, 2)} addr:${hex(nes.reg_pc - 1, 4)}`);
 }
 
 function cpu_read_tick(nes: NES, addr: number): number {
@@ -830,8 +880,8 @@ function LDA(nes: NES, opcode: number) {
 function BIT(nes: NES, opcode: number) {
     const mem = cpu_read_execute_00(nes, opcode);
     nes.flag_z = (nes.reg_a & mem) == 0;
-    nes.flag_v = bit_test(mem, 6);
     nes.flag_n = bit_test(mem, 7);
+    nes.flag_v = bit_test(mem, 6);
 }
 
 function CMP(nes: NES, opcode: number) {
