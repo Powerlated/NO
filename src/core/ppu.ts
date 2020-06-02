@@ -3,6 +3,8 @@ function ppu_reg_read(nes: NES, addr: number): number {
         case 0x2000: return 0xFF;
         case 0x2001: return 0xFF;
         case 0x2002: return ppu_read_ppustatus(nes);
+        case 0x2003: return 0xFF;
+        case 0x2004: return ppu_read_oamdata(nes);
         case 0x2005: return 0xFF;
         case 0x2006: return 0xFF;
         case 0x2007: return ppu_read_ppudata(nes);
@@ -23,9 +25,21 @@ function ppu_reg_write(nes: NES, addr: number, val: number): void {
     throw `ppu_reg_write not implemented addr:${hex(addr, 4)} val:${hex(val, 2)}`;
 }
 
+function ppu_write_oamaddr(nes: NES, val: number) {
+    nes.ppu_oamaddr = val;
+}
+
+function ppu_read_oamdata(nes: NES) {
+    const sprite = nes.ppu_oamaddr >> 2;
+    const sprite_addr = nes.ppu_oamaddr & 3;
+    return nes.ppu_oam[sprite][sprite_addr];
+}
+
 function ppu_write_oamdata(nes: NES, val: number) {
-    nes.ppu_oam[nes.ppu_oamaddr] = val;
-    nes.ppu_oamaddr = (nes.ppu_oamaddr) & 0xFF;
+    const sprite = nes.ppu_oamaddr >> 2;
+    const sprite_addr = nes.ppu_oamaddr & 3;
+    nes.ppu_oam[sprite][sprite_addr] = val;
+    nes.ppu_oamaddr = (nes.ppu_oamaddr + 1) & 0xFF;
 }
 
 function ppu_write_ppuctrl(nes: NES, val: number) {
@@ -33,7 +47,7 @@ function ppu_write_ppuctrl(nes: NES, val: number) {
     nes.ppu_ppudata_access_inc = bit_test(val, 2);
     nes.ppu_small_obj_pattern_addr = bit_test(val, 3);
     nes.ppu_bg_pattern_table_addr = bit_test(val, 4);
-    nes.ppu_obj_size = bit_test(val, 5);
+    nes.ppu_obj_8x16 = bit_test(val, 5);
     nes.ppu_master_slave_sel = bit_test(val, 6);
     nes.ppu_enable_nmi = bit_test(val, 7);
 }
@@ -187,6 +201,24 @@ function ppu_write_vram(nes: NES, addr: number, val: number) {
             case 0x3F0E: ppu_set_bg_palette(nes, 3, 1, val); break;
             case 0x3F0F: ppu_set_bg_palette(nes, 3, 2, val); break;
 
+
+
+            case 0x3F11: ppu_set_obj_palette(nes, 0, 0, val); break;
+            case 0x3F12: ppu_set_obj_palette(nes, 0, 1, val); break;
+            case 0x3F13: ppu_set_obj_palette(nes, 0, 2, val); break;
+
+            case 0x3F15: ppu_set_obj_palette(nes, 1, 0, val); break;
+            case 0x3F16: ppu_set_obj_palette(nes, 1, 1, val); break;
+            case 0x3F17: ppu_set_obj_palette(nes, 1, 2, val); break;
+
+            case 0x3F19: ppu_set_obj_palette(nes, 2, 0, val); break;
+            case 0x3F1A: ppu_set_obj_palette(nes, 2, 1, val); break;
+            case 0x3F1B: ppu_set_obj_palette(nes, 2, 2, val); break;
+
+            case 0x3F1D: ppu_set_obj_palette(nes, 3, 0, val); break;
+            case 0x3F1E: ppu_set_obj_palette(nes, 3, 1, val); break;
+            case 0x3F1F: ppu_set_obj_palette(nes, 3, 2, val); break;
+
         }
     }
 }
@@ -196,6 +228,13 @@ function ppu_set_bg_palette(nes: NES, pal: number, col: number, byte: number) {
     if (byte < PALETTE_RGB_TABLE.length)
         nes.ppu_bg_palette[pal][col].set(PALETTE_RGB_TABLE[byte]);
 }
+
+// Four palettes, and 3 colors for each palette, 12 colors total
+function ppu_set_obj_palette(nes: NES, pal: number, col: number, byte: number) {
+    if (byte < PALETTE_RGB_TABLE.length)
+        nes.ppu_obj_palette[pal][col].set(PALETTE_RGB_TABLE[byte]);
+}
+
 
 function ppu_set_universal_bg_palette(nes: NES, byte: number) {
     if (byte < PALETTE_RGB_TABLE.length)
@@ -211,71 +250,71 @@ function ppu_write_ppuscroll(nes: NES, val: number) {
     nes.ppu_ppuscroll_latch = true;
 }
 
-function ppu_write_oamaddr(nes: NES, val: number) {
-    nes.ppu_oamaddr = val;
-}
+
 
 function ppu_advance_fetcher(nes: NES) {
-    switch (nes.ppu_fetcher_state) {
-        // Nametable byte
-        case 0:
-            {
-                nes.ppu_pattern_shift_upper &= 0xFF00;
-                nes.ppu_pattern_shift_lower &= 0xFF00;
-                nes.ppu_pattern_shift_upper |= nes.ppu_pattern_upper_byte;
-                nes.ppu_pattern_shift_lower |= nes.ppu_pattern_lower_byte;
+    if (nes.ppu_render_bg) {
+        switch (nes.ppu_fetcher_state) {
+            // Nametable byte
+            case 0:
+                {
+                    nes.ppu_pattern_shift_upper &= 0xFF00;
+                    nes.ppu_pattern_shift_lower &= 0xFF00;
+                    nes.ppu_pattern_shift_upper |= nes.ppu_pattern_upper_byte;
+                    nes.ppu_pattern_shift_lower |= nes.ppu_pattern_lower_byte;
 
-                nes.ppu_attribute_current = nes.ppu_attribute_val;
+                    nes.ppu_attribute_current = nes.ppu_attribute_val;
 
-                let nametable_base = [0x2000, 0x2400, 0x2800, 0x2C00][nes.ppu_nametable_base_id];
-                nes.ppu_nametable_val = ppu_read_vram(nes, nametable_base + nes.ppu_nametable_index_start + nes.ppu_nametable_index_offset);
+                    let nametable_base = [0x2000, 0x2400, 0x2800, 0x2C00][nes.ppu_nametable_base_id];
+                    nes.ppu_nametable_val = ppu_read_vram(nes, nametable_base + nes.ppu_nametable_index_start + nes.ppu_nametable_index_offset);
 
-                nes.ppu_nametable_index_offset++;
-                if (nes.ppu_nametable_index_offset > 31) {
-                    nes.ppu_nametable_index_offset = 0;
-                    nes.ppu_nametable_index_start += 0x400;
+                    nes.ppu_nametable_index_offset++;
+                    if (nes.ppu_nametable_index_offset > 31) {
+                        nes.ppu_nametable_index_offset = 0;
+                        nes.ppu_nametable_index_start += 0x400;
+                    }
                 }
-            }
-            break;
-        // Attribute table byte
-        case 2:
-            {
-                let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
-                let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 2));
+                break;
+            // Attribute table byte
+            case 2:
+                {
+                    let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
+                    let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 2));
 
 
-                if ((nes.ppu_line & 0b10000)) attrtable_byte >>= 4;
-                if ((nes.ppu_attribute_index_offset & 0b10)) attrtable_byte >>= 2;
+                    if ((nes.ppu_line & 0b10000)) attrtable_byte >>= 4;
+                    if ((nes.ppu_attribute_index_offset & 0b10)) attrtable_byte >>= 2;
 
-                nes.ppu_attribute_index_offset++;
-                if (nes.ppu_attribute_index_offset > 31) {
-                    nes.ppu_attribute_index_offset = 0;
-                    nes.ppu_attribute_index_start += 0x400;
+                    nes.ppu_attribute_index_offset++;
+                    if (nes.ppu_attribute_index_offset > 31) {
+                        nes.ppu_attribute_index_offset = 0;
+                        nes.ppu_attribute_index_start += 0x400;
+                    }
+
+                    nes.ppu_attribute_val = attrtable_byte & 0b11;
                 }
+                break;
+            // Pattern table tile lower
+            case 4:
+                {
+                    let tileBase = (nes.ppu_nametable_val * 16) + 0;
+                    tileBase += nes.ppu_line & 7;
 
-                nes.ppu_attribute_val = attrtable_byte & 0b11;
-            }
-            break;
-        // Pattern table tile lower
-        case 4:
-            {
-                let tileBase = (nes.ppu_nametable_val * 16) + 0;
-                tileBase += nes.ppu_line & 7;
+                    let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
+                    nes.ppu_pattern_lower_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase);
+                }
+                break;
+            // Pattern table tile upper
+            case 6:
+                {
+                    let tileBase = (nes.ppu_nametable_val * 16) + 8;
+                    tileBase += nes.ppu_line & 7;
 
-                let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
-                nes.ppu_pattern_lower_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase);
-            }
-            break;
-        // Pattern table tile upper
-        case 6:
-            {
-                let tileBase = (nes.ppu_nametable_val * 16) + 8;
-                tileBase += nes.ppu_line & 7;
-
-                let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
-                nes.ppu_pattern_upper_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase);
-            }
-            break;
+                    let bg_pattern_table_addr = nes.ppu_bg_pattern_table_addr ? 0x1000 : 0x0000;
+                    nes.ppu_pattern_upper_byte = ppu_read_vram(nes, bg_pattern_table_addr + tileBase);
+                }
+                break;
+        }
     }
 
     nes.ppu_fetcher_state++;
@@ -296,6 +335,41 @@ function ppu_advance_fetcher(nes: NES) {
             nes.ppu_img.data[nes.ppu_image_index + 2] = nes.ppu_universal_bg_col[2];
         }
 
+
+        for (let s = 0; s < 8; s++) {
+            const lower = nes.ppu_sprite_pattern_shift_lower[s];
+            const upper = nes.ppu_sprite_pattern_shift_upper[s];
+            const xpos = nes.ppu_sprite_xpos[s];
+            const attr = nes.ppu_sprite_attrs[s];
+
+            const palette = attr & 0b11;
+
+            const xflip = bit_test(attr, 6);
+
+            if (nes.ppu_image_x >= xpos && nes.ppu_image_x < xpos + 8) {
+                let pattern_val: number;
+
+                if (!xflip) {
+                    pattern_val = (bit_test(upper, 7) ? 2 : 0) + (bit_test(lower, 7) ? 1 : 0);
+                    nes.ppu_sprite_pattern_shift_lower[s] <<= 1;
+                    nes.ppu_sprite_pattern_shift_upper[s] <<= 1;
+                } else {
+                    pattern_val = (bit_test(upper, 0) ? 2 : 0) + (bit_test(lower, 0) ? 1 : 0);
+                    nes.ppu_sprite_pattern_shift_lower[s] >>= 1;
+                    nes.ppu_sprite_pattern_shift_upper[s] >>= 1;
+                }
+
+                if (pattern_val != 0) {
+                    if (s == 0 && nes.ppu_sprite0_on) {
+                        nes.ppu_sprite0hit = true;
+                    }
+
+                    nes.ppu_img.data[nes.ppu_image_index + 0] = nes.ppu_obj_palette[palette][pattern_val - 1][0];
+                    nes.ppu_img.data[nes.ppu_image_index + 1] = nes.ppu_obj_palette[palette][pattern_val - 1][1];
+                    nes.ppu_img.data[nes.ppu_image_index + 2] = nes.ppu_obj_palette[palette][pattern_val - 1][2];
+                }
+            }
+        }
         nes.ppu_image_index += 4;
     }
 
@@ -328,6 +402,13 @@ function ppu_fetcher_reset(nes: NES) {
 
     nes.ppu_image_x = -16;
     nes.ppu_image_index = (nes.ppu_line * 256) * 4;
+
+    nes.ppu_oam_scan_sprite = 0;
+    nes.ppu_oam_scan_sprite_byte = 0;
+    nes.ppu_oam_scan_step = 0;
+    nes.ppu_oam_scan_secondary_sprite = 0;
+
+    nes.ppu_sprite0_on = false;
 }
 
 function ppu_advance(nes: NES, cycles: number) {
@@ -338,41 +419,55 @@ function ppu_advance(nes: NES, cycles: number) {
                 if (debug)
                     console.log("NMI flag clear");
 
+                ppu_clear_secondary_oam(nes);
+
                 nes.ppu_nmi_occurred = false;
                 ppu_check_nmi(nes);
                 nes.ppu_sprite0hit = false;
             }
 
-            else if (nes.ppu_internal_line_clock == 320) {
-                ppu_fetcher_reset(nes);
+            if (nes.ppu_internal_line_clock >= 65 && nes.ppu_internal_line_clock <= 256) {
+                ppu_advance_oam_scan(nes);
             }
-            else if (nes.ppu_internal_line_clock >= 321 && nes.ppu_internal_line_clock <= 336) {
+
+            if (nes.ppu_internal_line_clock == 320) {
+                nes.ppu_line = 0;
+                ppu_fetcher_reset(nes);
+                ppu_sprite_fetch(nes);
+            }
+            if (nes.ppu_internal_line_clock >= 321 && nes.ppu_internal_line_clock <= 336) {
                 ppu_advance_fetcher(nes);
             }
 
-            else if (nes.ppu_internal_line_clock >= 341) {
+            if (nes.ppu_internal_line_clock >= 341) {
                 nes.ppu_internal_line_clock = 0;
                 nes.ppu_internal_line = 0;
             }
         }
         // Visible scanlines
         else if (nes.ppu_internal_line >= 0 && nes.ppu_internal_line <= 239) {
-            // TODO: Remove mock sprite 0
-            if (nes.ppu_internal_line == 31 && nes.ppu_internal_line_clock == 1) nes.ppu_sprite0hit = true;
+            if (nes.ppu_internal_line_clock == 1) {
+                ppu_clear_secondary_oam(nes);
+            }
 
-            if (nes.ppu_internal_line_clock > 0 && nes.ppu_internal_line_clock < 257) {
+            if (nes.ppu_internal_line_clock >= 1 && nes.ppu_internal_line_clock <= 256) {
                 ppu_advance_fetcher(nes);
             }
 
-            else if (nes.ppu_internal_line_clock == 320) {
+            if (nes.ppu_internal_line_clock >= 65 && nes.ppu_internal_line_clock <= 256) {
+                ppu_advance_oam_scan(nes);
+            }
+
+            if (nes.ppu_internal_line_clock == 320) {
                 nes.ppu_line++;
                 ppu_fetcher_reset(nes);
+                ppu_sprite_fetch(nes);
             }
-            else if (nes.ppu_internal_line_clock >= 321 && nes.ppu_internal_line_clock <= 336) {
+            if (nes.ppu_internal_line_clock >= 321 && nes.ppu_internal_line_clock <= 336) {
                 ppu_advance_fetcher(nes);
             }
 
-            else if (nes.ppu_internal_line_clock >= 341) {
+            if (nes.ppu_internal_line_clock >= 341) {
                 nes.ppu_internal_line_clock = 0;
                 nes.ppu_internal_line++;
             }
@@ -381,8 +476,6 @@ function ppu_advance(nes: NES, cycles: number) {
         else if (nes.ppu_internal_line == 240) {
             nes.ppu_internal_line_clock++;
             if (nes.ppu_internal_line_clock >= 341) {
-                nes.ppu_line = 0;
-
                 nes.ppu_internal_line_clock = 0;
                 nes.ppu_internal_line++;
             }
@@ -524,3 +617,107 @@ const PALETTE_RGB_TABLE: Uint8Array[] = [
     Uint8Array.of(0x00, 0x00, 0x00),
     Uint8Array.of(0x00, 0x00, 0x00)
 ];
+
+function ppu_oam_dma(nes: NES, start: number) {
+    for (let i = 0; i < 256; i++) {
+        nes_tick(nes, 1);
+        const value = mem_read(nes, (start << 8) | i);
+        nes_tick(nes, 1);
+        ppu_write_oamdata(nes, value);
+    }
+}
+
+function ppu_advance_oam_scan(nes: NES) {
+    switch (nes.ppu_oam_scan_step) {
+        // Compare Y and copy
+        case 0:
+            const y = nes.ppu_oam[nes.ppu_oam_scan_sprite][0];
+            // Check if sprite is on current scanline and if secondary OAM is available
+            if (nes.ppu_oam_scan_secondary_sprite < 8) {
+                nes.ppu_secondary_oam[nes.ppu_oam_scan_secondary_sprite][0] = y;
+                if (nes.ppu_internal_line >= y && nes.ppu_internal_line < y + (nes.ppu_obj_8x16 ? 16 : 8)) {
+                    nes.ppu_secondary_oam[nes.ppu_oam_scan_secondary_sprite][1] = nes.ppu_oam[nes.ppu_oam_scan_sprite][1];
+                    nes.ppu_secondary_oam[nes.ppu_oam_scan_secondary_sprite][2] = nes.ppu_oam[nes.ppu_oam_scan_sprite][2];
+                    nes.ppu_secondary_oam[nes.ppu_oam_scan_secondary_sprite][3] = nes.ppu_oam[nes.ppu_oam_scan_sprite][3];
+                    nes.ppu_oam_scan_secondary_sprite++;
+                }
+
+                if (nes.ppu_oam_scan_sprite == 0) {
+                    nes.ppu_sprite0_on = true;
+                }
+            }
+
+            nes.ppu_oam_scan_step = 1;
+            return;
+        // Increment sprite counter
+        case 1:
+            nes.ppu_oam_scan_sprite++;
+            if (nes.ppu_oam_scan_sprite > 63) {
+                nes.ppu_oam_scan_sprite = 0;
+                nes.ppu_oam_scan_step = 3;
+                return;
+            }
+            if (nes.ppu_oam_scan_secondary_sprite < 8) {
+                nes.ppu_oam_scan_step = 0;
+                return;
+            }
+            nes.ppu_oam_scan_step = 2;
+            return;
+        case 2:
+            // TODO: Implement sprite overflow flag
+            nes.ppu_oam_scan_step = 3;
+            return;
+        // OAM Scan Done, wait for Hblank
+        case 3:
+            return;
+    }
+}
+
+function ppu_sprite_fetch(nes: NES) {
+    for (let sprite = 0; sprite < 8; sprite++) {
+        const sprite_data = nes.ppu_secondary_oam[sprite];
+
+        const ypos = sprite_data[0];
+        const tile_index = sprite_data[1];
+        const attributes = sprite_data[2];
+        const xpos = sprite_data[3];
+
+        let tile_base = (tile_index * 16) + 0;
+        let y_offset = (nes.ppu_internal_line - ypos) & 7;
+
+        const y_flip = bit_test(attributes, 7);
+
+        let bg_pattern_table_addr;
+
+        if (!nes.ppu_obj_8x16) {
+            bg_pattern_table_addr = nes.ppu_small_obj_pattern_addr ? 0x1000 : 0x0000;
+        } else {
+            bg_pattern_table_addr = bit_test(tile_index, 0) ? 0x1000 : 0x0000;
+
+            if (y_flip) {
+                if (ypos + 8 > nes.ppu_internal_line) {
+                    bg_pattern_table_addr++;
+                }
+            } else {
+                if (ypos + 8 <= nes.ppu_internal_line) {
+                    bg_pattern_table_addr++;
+                }
+            }
+        }
+
+        if (y_flip) y_offset ^= 7;
+
+        nes.ppu_sprite_pattern_shift_lower[sprite] = ppu_read_vram(nes, (bg_pattern_table_addr + tile_base + y_offset) & 0x1FFF);
+        nes.ppu_sprite_pattern_shift_upper[sprite] = ppu_read_vram(nes, (bg_pattern_table_addr + tile_base + y_offset + 8) & 0x1FFF);
+        nes.ppu_sprite_xpos[sprite] = xpos;
+        nes.ppu_sprite_attrs[sprite] = attributes;
+    }
+}
+
+function ppu_clear_secondary_oam(nes: NES) {
+    for (let sprite = 0; sprite < 8; sprite++) {
+        for (let byte = 0; byte < 4; byte++) {
+            nes.ppu_secondary_oam[sprite][byte] = 0xFF;
+        }
+    }
+}

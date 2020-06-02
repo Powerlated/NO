@@ -113,6 +113,9 @@ function io_read(nes: NES, addr: number): number {
 
 function io_write(nes: NES, addr: number, val: number): void {
     switch (addr) {
+        case 0x4014:
+            ppu_oam_dma(nes, val);
+            return;
         case 0x4016:
             controller_set(nes, val);
             return;

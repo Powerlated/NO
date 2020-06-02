@@ -111,7 +111,7 @@ class NES {
     ppu_ppudata_access_inc = false;
     ppu_small_obj_pattern_addr = false;
     ppu_bg_pattern_table_addr = false;
-    ppu_obj_size = false;
+    ppu_obj_8x16 = false;
     ppu_master_slave_sel = false;
     ppu_enable_nmi = false;
 
@@ -123,7 +123,14 @@ class NES {
     ppu_ppudata_head = 0;
 
     ppu_oamaddr = 0;
-    ppu_oam = new Uint8Array(0x100);
+    ppu_oam = new Array(64).fill(0).map(() => new Uint8Array(4));
+    ppu_secondary_oam = new Array(8).fill(0).map(() => new Uint8Array(4));
+
+    ppu_oam_scan_sprite = 0;
+    ppu_oam_scan_secondary_sprite = 0;
+    ppu_oam_scan_sprite_byte = 0;
+    ppu_oam_scan_step = 0;
+    ppu_sprite0_on = false;
 
     ppu_ppuscroll_latch = false;
     ppu_ppuscroll_x = 0;
@@ -141,17 +148,8 @@ class NES {
     ppu_image_index = 0;
     ppu_fine_x = 0;
 
-    ppu_sprite_pattern_shift: Uint8Array[] = [
-        new Uint8Array(8),
-        new Uint8Array(8),
-        new Uint8Array(8),
-        new Uint8Array(8),
-        new Uint8Array(8),
-        new Uint8Array(8),
-        new Uint8Array(8),
-        new Uint8Array(8),
-    ];
-    ppu_sprite_pattern_shift_pos = new Uint8Array(8);
+    ppu_sprite_pattern_shift_upper = new Uint8Array(8);
+    ppu_sprite_pattern_shift_lower = new Uint8Array(8);
     ppu_sprite_xpos = new Uint8Array(8);
     ppu_sprite_attrs = new Uint8Array(8);
 
@@ -185,7 +183,7 @@ class NES {
         [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
     ];
     ppu_img = new ImageData(new Uint8ClampedArray(256 * 240 * 4).fill(0xFF), 256, 240);
-
+    
     apu_buffer = new Float32Array(2048);
     apu_buffer_pos = 0;
     apu_sample_timer = 0;
