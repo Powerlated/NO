@@ -656,6 +656,7 @@ function cpu_read_modify_execute_10(nes: NES, opcode: number): number {
             }
         case 0b010: // accumulator
             {
+                nes_tick(nes, 1);
                 return nes.reg_a;
             }
         case 0b011: // absolute
@@ -740,6 +741,7 @@ function cpu_sp_set(nes: NES, val: number) {
 }
 
 function SEI(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     nes.flag_i = true;
 }
 
@@ -777,43 +779,54 @@ function JSR(nes: NES, opcode: number) {
     const high = cpu_read_tick_inc(nes);
     const final = (high << 8) | low;
 
+    nes_tick(nes, 1);
+
     cpu_push16(nes, nes.reg_pc - 1);
     nes.reg_pc = final;
 }
 function RTS(nes: NES, opcode: number) {
     const val = cpu_pop16(nes);
+    nes_tick(nes, 3);
     nes.reg_pc = val + 1;
 }
 function RTI(nes: NES, opcode: number) {
     const flags = cpu_pop8(nes);
     const pc = cpu_pop16(nes);
 
+    nes_tick(nes, 2);
+
     nes.flag_set(flags);
     nes.reg_pc = pc;
 }
 
 function NOP(nes: NES, opcode: number) {
-
+    nes_tick(nes, 1);
 }
 
 function SEC(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     nes.flag_c = true;
 }
 function CLC(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     nes.flag_c = false;
 }
 
 function SED(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     nes.flag_d = true;
 }
 function CLD(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     nes.flag_d = false;
 }
 
 function CLV(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     nes.flag_v = false;
 }
 function CLI(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     nes.flag_i = false;
 }
 
@@ -933,8 +946,16 @@ function CPY(nes: NES, opcode: number) {
 function cpu_execute_branch(nes: NES, condition: boolean) {
     const imm = cpu_read_tick_inc(nes);
     if (condition) {
-        const offset = two8b(imm);
-        nes.reg_pc = (nes.reg_pc + offset) & 0xFFFF;
+        nes_tick(nes, 1);
+        const old_high = nes.reg_pc >> 8;
+
+        // Two's Complement
+        nes.reg_pc = (nes.reg_pc + two8b(imm)) & 0xFFFF;
+        const new_high = nes.reg_pc >> 8;
+
+        if (old_high != new_high) {
+            nes_tick(nes, 1);
+        }
     }
 }
 
@@ -972,18 +993,22 @@ function BPL(nes: NES, opcode: number) {
 
 function PLA(nes: NES, opcode: number) {
     nes.reg_a = cpu_pop8(nes);
+    nes_tick(nes, 2);
     nes.flag_z = nes.reg_a == 0;
     nes.flag_n = bit_test(nes.reg_a, 7);
 }
 
 function PHP(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     cpu_push8(nes, nes.flag_get_for_push());
 }
 function PLP(nes: NES, opcode: number) {
+    nes_tick(nes, 2);
     nes.flag_set(cpu_pop8(nes));
 }
 
 function PHA(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
     cpu_push8(nes, nes.reg_a);
 }
 
@@ -1050,12 +1075,16 @@ function LDY(nes: NES, opcode: number) {
 }
 
 function INY(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_y = (nes.reg_y + 1) & 0xFF;
 
     nes.flag_z = nes.reg_y == 0;
     nes.flag_n = bit_test(nes.reg_y, 7);
 }
 function INX(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_x = (nes.reg_x + 1) & 0xFF;
 
     nes.flag_z = nes.reg_x == 0;
@@ -1063,6 +1092,8 @@ function INX(nes: NES, opcode: number) {
 }
 
 function DEY(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_y = (nes.reg_y - 1) & 0xFF;
 
     nes.flag_z = nes.reg_y == 0;
@@ -1070,6 +1101,8 @@ function DEY(nes: NES, opcode: number) {
 }
 
 function DEX(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_x = (nes.reg_x - 1) & 0xFF;
 
     nes.flag_z = nes.reg_x == 0;
@@ -1077,30 +1110,40 @@ function DEX(nes: NES, opcode: number) {
 }
 
 function TAY(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_y = nes.reg_a;
 
     nes.flag_z = nes.reg_y == 0;
     nes.flag_n = bit_test(nes.reg_y, 7);
 }
 function TYA(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_a = nes.reg_y;
 
     nes.flag_z = nes.reg_a == 0;
     nes.flag_n = bit_test(nes.reg_a, 7);
 }
 function TXA(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_a = nes.reg_x;
 
     nes.flag_z = nes.reg_a == 0;
     nes.flag_n = bit_test(nes.reg_a, 7);
 }
 function TSX(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_x = nes.reg_sp;
 
     nes.flag_z = nes.reg_x == 0;
     nes.flag_n = bit_test(nes.reg_x, 7);
 }
 function TXS(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_sp = nes.reg_x;
 }
 
@@ -1192,6 +1235,8 @@ function INVALID_NOP_3BYTE(nes: NES, opcode: number) {
 }
 
 function TAX(nes: NES, opcode: number) {
+    nes_tick(nes, 1);
+
     nes.reg_x = nes.reg_a;
 
     nes.flag_z = nes.reg_x == 0;
