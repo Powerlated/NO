@@ -73,41 +73,33 @@ function apu_half_frame(nes: NES) {
     }
 
     if (!nes.apu_pulse1_env_loop_length_halt) {
-        if (nes.apu_pulse1_length_counter == 0) {
-            nes.apu_pulse1_length_counter = LENGTH[nes.apu_pulse1_length_load & 0x1F];
-            nes.apu_pulse1_muted = true;
-        } else {
+        if (nes.apu_pulse1_length_counter > 0) {
             nes.apu_pulse1_length_counter--;
         }
+
     }
     if (!nes.apu_pulse2_env_loop_length_halt) {
-        if (nes.apu_pulse2_length_counter == 0) {
-            nes.apu_pulse2_length_counter = LENGTH[nes.apu_pulse2_length_load & 0x1F];
-            nes.apu_pulse2_muted = true;
-        } else {
+        if (nes.apu_pulse2_length_counter > 0) {
             nes.apu_pulse2_length_counter--;
         }
+
     }
     if (!nes.apu_triangle_control) {
-        if (nes.apu_triangle_length_counter == 0) {
-            nes.apu_triangle_length_counter = LENGTH[nes.apu_triangle_length_load & 0x1F];
-            nes.apu_triangle_muted = true;
-            // console.log("Triangle muted")
-        } else {
+        if (nes.apu_triangle_length_counter > 0) {
             nes.apu_triangle_length_counter--;
         }
+
     }
     if (!nes.apu_noise_env_loop_length_halt) {
-        if (nes.apu_noise_length_counter == 0) {
-            nes.apu_noise_length_counter = LENGTH[nes.apu_noise_length_load & 0x1F];
-            nes.apu_noise_muted = true;
-        } else {
+        if (nes.apu_noise_length_counter > 0) {
             nes.apu_noise_length_counter--;
         }
+
     }
 }
 
 function apu_quarter_frame(nes: NES) {
+
     if (nes.apu_pulse1_env_start) {
         nes.apu_pulse1_env_start = false;
 
@@ -293,24 +285,24 @@ function apu_advance(nes: NES, cycles: number) {
         nes.apu_sample_timer -= 1789773 / SAMPLE_RATE;
 
         let sample = 0;
-        if (nes.apu_pulse1_enable && !nes.apu_pulse1_muted) {
+        if (nes.apu_pulse1_enable && nes.apu_pulse1_length_counter != 0) {
             if (nes.apu_pulse1_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume_init / 15);
             } else {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume / 15);
             }
         }
-        if (nes.apu_pulse2_enable && !nes.apu_pulse2_muted) {
+        if (nes.apu_pulse2_enable && nes.apu_pulse2_length_counter != 0) {
             if (nes.apu_pulse2_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse2_duty][nes.apu_pulse2_pos] * (nes.apu_pulse2_volume_init / 15);
             } else {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse2_duty][nes.apu_pulse2_pos] * (nes.apu_pulse2_volume / 15);
             }
         }
-        if (nes.apu_triangle_enable && !nes.apu_triangle_muted) {
+        if (nes.apu_triangle_enable && nes.apu_triangle_length_counter != 0) {
             sample += TRIANGLE_SEQ[nes.apu_triangle_pos] / 15;
         }
-        if (nes.apu_noise_enable && !nes.apu_noise_muted) {
+        if (nes.apu_noise_enable && nes.apu_noise_length_counter != 0) {
             if (nes.apu_noise_constant) {
                 sample += (nes.apu_noise_lfsr & 1) * (nes.apu_noise_volume_init / 15);
             } else {
@@ -353,7 +345,9 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_pulse1_timer_high = val & 0b111;
             nes.apu_pulse1_length_load = (val >> 3) & 0b11111;
 
-            nes.apu_pulse1_muted = false;
+            if (!nes.apu_pulse1_env_loop_length_halt)
+                nes.apu_pulse1_length_counter = LENGTH[nes.apu_pulse1_length_load & 0x1F];
+
             nes.apu_pulse1_env_start = true;
             nes.apu_pulse1_pos = 0;
             break;
@@ -379,7 +373,9 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_pulse2_timer_high = val & 0b111;
             nes.apu_pulse2_length_load = (val >> 3) & 0b11111;
 
-            nes.apu_pulse2_muted = false;
+            if (!nes.apu_pulse2_env_loop_length_halt)
+                nes.apu_pulse2_length_counter = LENGTH[nes.apu_pulse2_length_load & 0x1F];
+
             nes.apu_pulse2_env_start = true;
             nes.apu_pulse2_pos = 0;
             break;
@@ -395,7 +391,8 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_triangle_timer_high = val & 0b111;
             nes.apu_triangle_length_load = (val >> 3) & 0b11111;
 
-            nes.apu_triangle_muted = false;
+            if (!nes.apu_triangle_control)
+                nes.apu_triangle_length_counter = LENGTH[nes.apu_triangle_length_load & 0x1F];
             break;
 
         case 0x400C:
@@ -410,7 +407,9 @@ function apu_io_write(nes: NES, addr: number, val: number) {
         case 0x400F:
             nes.apu_noise_length_load = (val >> 3) & 0b11111;
 
-            nes.apu_noise_muted = false;
+            if (!nes.apu_noise_env_loop_length_halt)
+                nes.apu_noise_length_counter = LENGTH[nes.apu_noise_length_load & 0x1F];
+
             nes.apu_noise_env_start = true;
             break;
 
@@ -423,19 +422,15 @@ function apu_io_write(nes: NES, addr: number, val: number) {
 
             if (!bit_test(val, 0)) {
                 nes.apu_pulse1_length_counter = 0;
-                nes.apu_pulse1_muted = true;
             }
             if (!bit_test(val, 1)) {
                 nes.apu_pulse2_length_counter = 0;
-                nes.apu_pulse2_muted = true;
             }
             if (!bit_test(val, 2)) {
                 nes.apu_triangle_length_counter = 0;
-                nes.apu_triangle_muted = true;
             }
             if (!bit_test(val, 3)) {
                 nes.apu_noise_length_counter = 0;
-                nes.apu_noise_muted = true;
             }
 
             break;
@@ -443,6 +438,13 @@ function apu_io_write(nes: NES, addr: number, val: number) {
         case 0x4017:
             nes.apu_sequencer_5step = bit_test(val, 7);
             nes.apu_sequencer_no_interrupt = bit_test(val, 6);
+
+            // nes.apu_sequencer_step = 0;
+
+            // if (nes.apu_sequencer_5step) {
+            //     apu_quarter_frame(nes);
+            //     apu_half_frame(nes);
+            // }
             break;
     }
 }
