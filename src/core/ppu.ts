@@ -43,7 +43,8 @@ function ppu_write_oamdata(nes: NES, val: number) {
 }
 
 function ppu_write_ppuctrl(nes: NES, val: number) {
-    nes.ppu_nametable_base_id = val & 0b11;
+    nes.ppu_nametable_base_low = bit_test(val, 0);
+    nes.ppu_nametable_base_high = bit_test(val, 1);
     nes.ppu_ppudata_access_inc = bit_test(val, 2);
     nes.ppu_small_obj_pattern_addr = bit_test(val, 3);
     nes.ppu_bg_pattern_table_addr = bit_test(val, 4);
@@ -79,9 +80,17 @@ function ppu_read_ppustatus(nes: NES): number {
 
 function ppu_write_ppuaddr(nes: NES, val: number) {
     if (!nes.ppu_ppuaddr_latch) {
+        // First write
+
+        let table = ((val & 0b1100) << 8);
+        nes.ppu_nametable_base = 0;
+        nes.ppu_nametable_base |= table;
+
         nes.ppu_ppudata_head &= 0x00FF;
         nes.ppu_ppudata_head |= val << 8;
     } else {
+        // Second write
+
         nes.ppu_ppudata_head &= 0xFF00;
         nes.ppu_ppudata_head |= val;
     }
@@ -265,22 +274,19 @@ function ppu_advance_fetcher(nes: NES) {
 
                     nes.ppu_attribute_current = nes.ppu_attribute_val;
 
-                    let nametable_base = [0x2000, 0x2400, 0x2800, 0x2C00][nes.ppu_nametable_base_id];
-                    nes.ppu_nametable_val = ppu_read_vram(nes, nametable_base + nes.ppu_nametable_index_start + nes.ppu_nametable_index_offset);
+                    nes.ppu_nametable_val = ppu_read_vram(nes, nes.ppu_nametable_base + nes.ppu_nametable_index_start + nes.ppu_nametable_index_offset);
 
                     nes.ppu_nametable_index_offset++;
                     if (nes.ppu_nametable_index_offset > 31) {
                         nes.ppu_nametable_index_offset = 0;
-                        nes.ppu_nametable_index_start += 0x400;
+                        nes.ppu_nametable_base ^= BIT_10;
                     }
                 }
                 break;
             // Attribute table byte
             case 2:
                 {
-                    let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
-                    let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 2));
-
+                    let attrtable_byte = ppu_read_vram(nes, nes.ppu_attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 2));
 
                     if ((nes.ppu_line & 0b10000)) attrtable_byte >>= 4;
                     if ((nes.ppu_attribute_index_offset & 0b10)) attrtable_byte >>= 2;
@@ -288,7 +294,7 @@ function ppu_advance_fetcher(nes: NES) {
                     nes.ppu_attribute_index_offset++;
                     if (nes.ppu_attribute_index_offset > 31) {
                         nes.ppu_attribute_index_offset = 0;
-                        nes.ppu_attribute_index_start += 0x400;
+                        nes.ppu_attribute_index_start ^= BIT_10;
                     }
 
                     nes.ppu_attribute_val = attrtable_byte & 0b11;
@@ -411,6 +417,16 @@ function ppu_fetcher_reset(nes: NES) {
     nes.ppu_oam_scan_secondary_sprite = 0;
 
     nes.ppu_sprite0_on = false;
+
+
+    nes.ppu_nametable_base = 0x2000;
+    if (nes.ppu_nametable_base_low) nes.ppu_nametable_base |= BIT_10;
+    if (nes.ppu_nametable_base_high) nes.ppu_nametable_base |= BIT_11;
+
+    nes.ppu_attrtable_base = 0x23C0;
+    if (nes.ppu_nametable_base_low) nes.ppu_attrtable_base |= BIT_10;
+    if (nes.ppu_nametable_base_high) nes.ppu_attrtable_base |= BIT_11;
+
 }
 
 function ppu_advance(nes: NES, cycles: number) {
@@ -423,6 +439,7 @@ function ppu_advance(nes: NES, cycles: number) {
 
                 ppu_clear_secondary_oam(nes);
 
+
                 nes.ppu_nmi_occurred = false;
                 ppu_check_nmi(nes);
                 nes.ppu_sprite0hit = false;
@@ -434,6 +451,7 @@ function ppu_advance(nes: NES, cycles: number) {
 
             if (nes.ppu_internal_line_clock == 320) {
                 nes.ppu_line = 0;
+
                 ppu_fetcher_reset(nes);
                 ppu_sprite_fetch(nes);
             }

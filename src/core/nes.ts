@@ -6,7 +6,7 @@ class NES {
 
     cart: iNES;
 
-    cycles = 0;
+    cycles = 7;
 
     reg_a = 0;
     reg_x = 0;
@@ -89,6 +89,10 @@ class NES {
 
         this.reg_sp = 0xFD;
         this.flag_set(0x24);
+
+        if (nestest_mode) {
+            this.reg_pc = 0xC000;
+        }
     }
 
     // PPUSTATUS
@@ -107,7 +111,8 @@ class NES {
     ppu_emphasize_blue = false;
 
     // PPUCTRL
-    ppu_nametable_base_id = 0;
+    ppu_nametable_base_low = false;
+    ppu_nametable_base_high = false;
     ppu_ppudata_access_inc = false;
     ppu_small_obj_pattern_addr = false;
     ppu_bg_pattern_table_addr = false;
@@ -165,6 +170,9 @@ class NES {
     ppu_attribute_index_start = 0;
     ppu_attribute_index_offset = 0;
 
+    ppu_attrtable_base = 0;
+    ppu_nametable_base = 0;
+
     ppu_ppudata_read_val = 0;
 
     ppu_universal_bg_col = new Uint8Array(3);
@@ -183,7 +191,9 @@ class NES {
         [new Uint8Array(3), new Uint8Array(3), new Uint8Array(3),],
     ];
     ppu_img = new ImageData(new Uint8ClampedArray(256 * 240 * 4).fill(0xFF), 256, 240);
-    
+
+    ppu_prepalette = new Uint8Array(256);
+
     apu_buffer = new Float32Array(2048);
     apu_buffer_pos = 0;
     apu_sample_timer = 0;
@@ -304,6 +314,8 @@ class NES {
 
 function nes_tick(nes: NES, cycles: number) {
     nes.cycles += cycles;
-    ppu_advance(nes, cycles * 3);
-    apu_advance(nes, cycles);
+    if (!nestest_mode) {
+        ppu_advance(nes, cycles * 3);
+        apu_advance(nes, cycles);
+    }
 }
