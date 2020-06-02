@@ -82,7 +82,7 @@ function cpu_intr_check(nes: NES) {
             console.log("Dispatching NMI");
 
         cpu_push16(nes, nes.reg_pc);
-        cpu_push8(nes, nes.flag_get_for_push());
+        cpu_push8(nes, nes.flag_get_for_nmi());
 
         const nmi_vector = cpu_read_tick(nes, 0xFFFA) | (cpu_read_tick(nes, 0xFFFB) << 8);
         nes.reg_pc = nmi_vector;
@@ -92,6 +92,14 @@ function cpu_intr_check(nes: NES) {
         if (debug)
             console.log(`NMI Vector: ${hex(nmi_vector, 4)}`);
     }
+}
+
+function cpu_intr_irq(nes: NES) {
+    cpu_push16(nes, nes.reg_pc);
+    cpu_push8(nes, nes.flag_get_for_push());
+
+    const irq_vector = cpu_read_tick(nes, 0xFFFE) | (cpu_read_tick(nes, 0xFFFF) << 8);
+    nes.reg_pc = irq_vector;
 }
 
 function bounds_check(i: number, lower: number, upper: number, desc: string) {
@@ -134,6 +142,11 @@ function cpu_get_dispatch(opcode: number): (nes: NES, opcode: number) => void {
         case 0x9A: return TXS;
         case 0xBA: return TSX;
         case 0x40: return RTI;
+        case 0x58: return CLI;
+        case 0xAA: return TAX;
+        case 0x00: return BRK;
+
+        case 0xEB: return SBC;
 
         case 0x1A:
         case 0x3A:
@@ -153,7 +166,8 @@ function cpu_get_dispatch(opcode: number): (nes: NES, opcode: number) => void {
         case 0x74:
         case 0xD4:
         case 0xF4:
-        case 0x80:
+
+        case 0x80: case 0x82: case 0x89: case 0xC2: case 0xE2:
             return INVALID_NOP_2BYTE;
 
         case 0x0C:
@@ -578,7 +592,7 @@ function cpu_write_execute_ldx_stx_10(nes: NES, opcode: number, val: number): vo
                 return;
             }
         default:
-            throw `cpu_write_execute_ldx_stx_10 invalid ${mode}`;
+            throw `cpu_write_execute_ldx_stx_10 invalid ${mode} opcode:${hex(opcode, 2)}`;
     }
 }
 
@@ -798,6 +812,9 @@ function CLD(nes: NES, opcode: number) {
 
 function CLV(nes: NES, opcode: number) {
     nes.flag_v = false;
+}
+function CLI(nes: NES, opcode: number) {
+    nes.flag_i = false;
 }
 
 
@@ -1174,5 +1191,17 @@ function INVALID_NOP_3BYTE(nes: NES, opcode: number) {
     cpu_read_tick_inc(nes);
 }
 
+function TAX(nes: NES, opcode: number) {
+    nes.reg_x = nes.reg_a;
+
+    nes.flag_z = nes.reg_x == 0;
+    nes.flag_n = bit_test(nes.reg_x, 7);
+}
+
+function BRK(nes: NES, opcode: number) {
+    // Useless opcode because 6502
+    cpu_read_tick_inc(nes);
+    cpu_intr_irq(nes);
+}
 
 // #endregion
