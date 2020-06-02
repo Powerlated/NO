@@ -115,7 +115,7 @@ class NES {
     ppu_master_slave_sel = false;
     ppu_enable_nmi = false;
 
-    ppu_line = 0
+    ppu_line = 0;
     ppu_internal_line = 0;
     ppu_internal_line_clock = 0;
 
@@ -133,11 +133,12 @@ class NES {
     ppu_nametable_b = new Uint8Array(1024).fill(0xFF);
 
     ppu_fetcher_state = 0;
-    ppu_pattern_shift = new Uint8Array(16);
-    ppu_pattern_shift_pos = 0;
-    ppu_attribute_shift = new Uint8Array(8);
-    ppu_attribute_shift_pos = 0;
-    ppu_pixel_x = 0;
+    ppu_pattern_shift_upper = 0;
+    ppu_pattern_shift_lower = 0;
+    ppu_attribute_shift_upper = 0;
+    ppu_attribute_shift_lower = 0;
+    ppu_image_x = 0;
+    ppu_image_index = 0;
     ppu_fine_x = 0;
 
     ppu_sprite_pattern_shift: Uint8Array[] = [
@@ -158,6 +159,8 @@ class NES {
     ppu_nametable_index_offset = 0;
     ppu_nametable_val = 0;
     ppu_attribute_val = 0;
+    ppu_attribute_current = 0;
+
     ppu_pattern_lower_byte = 0;
     ppu_pattern_upper_byte = 0;
 
@@ -165,7 +168,6 @@ class NES {
     ppu_attribute_index_offset = 0;
 
     ppu_ppudata_read_val = 0;
-    ppu_first_shift = false;
 
     ppu_universal_bg_col = new Uint8Array(3);
 
