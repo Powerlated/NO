@@ -12,11 +12,15 @@ window.onkeydown = (e: KeyboardEvent) => {
             const scanlineMax = 341 / 3;
             let cycles = 0;
             while (cycles <= scanlineMax) {
-                cycles += cpu_execute(nes);
+                cycles += step();
             }
             break;
         case 'f':
             runFrame();
+            break;
+        case 'p':
+            run = !run;
+            break;
     }
 
     switch (e.key.toLowerCase()) {
@@ -96,22 +100,22 @@ window.onkeyup = (e: KeyboardEvent) => {
 
 function exec_num(max: number) {
     for (let i = 0; i < max; i++)
-        cpu_execute(nes);
+        step();
 }
 
 function exec_cycles(max: number) {
     let cycles = 0;
     while (cycles < max) {
-        cycles += cpu_execute(nes);
+        cycles += step();
     }
 }
 
-let checkErrors = false;
+let nestest_mode = false;
 let logLine = 1;
 function step() {
     let cycles = cpu_execute(nes);
 
-    if (checkErrors) {
+    if (nestest_mode) {
         let logPc = `0x${nestest_log[logLine].slice(0, 4)}`;
         let pc = hex(nes.reg_pc, 4);
         if (logPc !== pc) {
@@ -159,6 +163,14 @@ function step() {
             errored = true;
         }
 
+        let logCycles = parseInt(nestest_log[logLine].slice(90));
+        let cycles = nes.cycles;
+        if (logCycles != cycles) {
+            console.error(`Line ${logLine}: nestest cycles mismatch
+        Expected: ${logCycles}, Actual: ${cycles}`);
+            errored = true;
+        }
+
         logLine++;
     }
 
@@ -181,9 +193,20 @@ function runFrame() {
 }
 
 let frame = 0;
+let run = false;
 function updateDebug() {
     requestAnimationFrame(updateDebug);
-    runEmulator();
+
+    if (!errored && run) {
+        try {
+            if (!nestest_mode) {
+                runEmulator();
+            }
+        } catch (e) {
+            console.error(e);
+            errored = true;
+        }
+    }
 
     disasmElement.innerHTML = disassemble(nes);
 
@@ -200,8 +223,8 @@ function updateDebug() {
 
     PPU Addr Head: ${hex(nes.ppu_ppudata_head, 4)}
 
-    PPU Line: ${nes.ppu_line}
-    PPU Line Dot: ${nes.ppu_line_clock}
+    PPU Line: ${nes.ppu_internal_line}
+    PPU Line Dot: ${nes.ppu_internal_line_clock}
 
     PPU NMI Enable: ${nes.ppu_enable_nmi}
     PPU NMI Occurred: ${nes.ppu_nmi_occurred}
@@ -210,7 +233,6 @@ function updateDebug() {
 
     PPU ScrX/Y ${nes.ppu_ppuscroll_x}/${nes.ppu_ppuscroll_y}
 
-    PPU Nametable Base: ${['0x2000', '0x2400', '0x2800', '0x2C00'][nes.ppu_nametable_base_id]}
     `;
 }
 
@@ -227,10 +249,6 @@ function runEmulator() {
 
     exec_cycles(max);
 }
-
-
-
-
 
 function download_log() {
     let string = log.join('\n');

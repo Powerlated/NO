@@ -5,6 +5,11 @@ interface Mapper {
     read_chr(nes: NES, addr: number): number;
 }
 
-const mapper_table: (Mapper | null)[] = [
-    new NROM(), null, null, null, null
-]
+const mapper_table: any[] = [];
+
+mapper_table[0] = NROM;
+mapper_table[2] = UxROM;
+mapper_table[3] = CNROM;
+// mapper_table[4] = MMC3;
+mapper_table[66] = GxROM;
+// 

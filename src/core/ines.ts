@@ -98,7 +98,7 @@ class iNES {
             throw `Mapper ${mapper_id} unimplemented`;
         }
 
-        this.mapper = mapper_table[mapper_id]!;
+        this.mapper = new mapper_table[mapper_id]!;
 
         this.prg_rom_data = prg_rom_data;
         this.chr_rom_data = chr_rom_data;
