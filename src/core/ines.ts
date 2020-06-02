@@ -83,15 +83,22 @@ function parse_iNES(rom: Uint8Array): iNES {
 
 
 class iNES {
-    mapper: number;
+    mapper_id: number;
+    mapper: Mapper;
 
     prg_rom_data: Uint8Array;
     chr_rom_data: Uint8Array;
 
     vertical_mirroring: boolean;
 
-    constructor(mapper: number, prg_rom_data: Uint8Array, chr_rom_data: Uint8Array, vertical_mirroring: boolean) {
-        this.mapper = mapper;
+    constructor(mapper_id: number, prg_rom_data: Uint8Array, chr_rom_data: Uint8Array, vertical_mirroring: boolean) {
+        this.mapper_id = mapper_id;
+
+        if (!mapper_table[mapper_id]) {
+            throw `Mapper ${mapper_id} unimplemented`;
+        }
+
+        this.mapper = mapper_table[mapper_id]!;
 
         this.prg_rom_data = prg_rom_data;
         this.chr_rom_data = chr_rom_data;

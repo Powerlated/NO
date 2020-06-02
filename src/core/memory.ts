@@ -14,7 +14,7 @@ function mem_read(nes: NES, addr: number): number {
     }
 
     else if (addr >= 0x4020) {
-        return read_mapper(nes, addr);
+        return nes.cart.mapper.read(nes, addr);
     }
 
     throw `mem_read out of bounds`;
@@ -36,7 +36,7 @@ function mem_read_debug(nes: NES, addr: number): number {
     }
 
     else if (addr >= 0x4020) {
-        return read_mapper(nes, addr);
+        return nes.cart.mapper.read(nes, addr);
     }
 
     throw `mem_read out of bounds`;
@@ -59,48 +59,10 @@ function mem_write(nes: NES, addr: number, val: number): void {
     }
 
     else if (addr >= 0x4020) {
-        write_mapper(nes, addr, val);
+        nes.cart.mapper.write(nes, addr, val);
     }
 }
 
-function read_mapper(nes: NES, addr: number) {
-    switch (nes.cart.mapper) {
-        case 0:
-            if (addr >= 0x4020 && addr <= 0x5FFF) {
-                return 0;
-            }
-            else if (addr >= 0x6000 && addr <= 0x7FFF) {
-                throw 'Mapper 0: Family Basic PRG RAM read';
-            }
-
-            else if (addr >= 0x8000 && addr <= 0xBFFF) {
-                return nes.cart.prg_rom_data[addr - 0x8000];
-            }
-
-            else if (addr >= 0xC000 && addr <= 0xFFFF) {
-                if (nes.cart.prg_rom_data.length > 16384) {
-                    // No mirroring
-                    // if (debug) console.log("Mapper 0: no mirorring")
-                    return nes.cart.prg_rom_data[addr - 0x8000];
-                } else {
-                    // Mirroring
-                    // if (debug) console.log("Mapper 0: mirroring")
-                    return nes.cart.prg_rom_data[addr - 0xC000];
-                }
-            }
-            throw `Mapper 0: read_mapper out of bounds addr${hex(addr, 4)}`;
-            break;
-    }
-    throw `Mapper ${nes.cart.mapper}: not implemented`;
-}
-
-function write_mapper(nes: NES, addr: number, val: number) {
-    switch (nes.cart.mapper) {
-        case 0:
-            return;
-    }
-    throw "write_mapper not implemented";
-}
 
 function io_read(nes: NES, addr: number): number {
     switch (addr) {

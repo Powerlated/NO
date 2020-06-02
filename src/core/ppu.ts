@@ -124,12 +124,7 @@ function ppu_write_ppudata(nes: NES, val: number) {
 function ppu_read_vram(nes: NES, addr: number): number {
     // console.log(`ppu_read_vram addr:${hex(addr, 4)}`);
     if (addr >= 0x0000 && addr <= 0x1FFF) {
-        switch (nes.cart.mapper) {
-            case 0:
-                return nes.cart.chr_rom_data[addr];
-            default:
-                throw `ppu_read_vram: Mapper ${nes.cart.mapper} not implemented`;
-        }
+        return nes.cart.mapper.read_chr(nes, addr);
     }
 
     else if (addr >= 0x2000 && addr <= 0x2FFF) {

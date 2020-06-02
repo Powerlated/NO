@@ -83,7 +83,7 @@ class NES {
         this.reg_y = 0;
         this.reg_pc = 0;
 
-        const resetVector = read_mapper(this, 0xFFFC) | (read_mapper(this, 0xFFFD) << 8);
+        const resetVector = mem_read(this, 0xFFFC) | (mem_read(this, 0xFFFD) << 8);
         console.log(`Reset Vector: ${hex(resetVector, 4)}`);
         this.reg_pc = resetVector;
 
