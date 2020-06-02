@@ -50,6 +50,19 @@ class NES {
         return val;
     }
 
+    flag_get_for_nmi(): number {
+        let val = 0;
+        if (this.flag_n) val |= BIT_7; // Negative
+        if (this.flag_v) val |= BIT_6; // Overflow
+        // val |= BIT_5; // NOP - B Flag    
+        // val |= BIT_4; // NOP - B Flag    
+        if (this.flag_d) val |= BIT_3; // Decimal
+        if (this.flag_i) val |= BIT_2; // Disable Interrupts
+        if (this.flag_z) val |= BIT_1; // Zero
+        if (this.flag_c) val |= BIT_0; // Carry
+        return val;
+    }
+
     flag_get_for_push(): number {
         // console.log("Flag for push");
         let val = 0;
@@ -102,8 +115,9 @@ class NES {
     ppu_master_slave_sel = false;
     ppu_enable_nmi = false;
 
-    ppu_line = 0;
-    ppu_line_clock = 0;
+    ppu_line = 0
+    ppu_internal_line = 0;
+    ppu_internal_line_clock = 0;
 
     ppu_ppuaddr_latch = false;
     ppu_ppudata_head = 0;
@@ -179,7 +193,7 @@ class NES {
     apu_pulse1_volume = 0;
     apu_pulse1_volume_init = 0;
     apu_pulse1_constant = false;
-    apu_pulse1_env_loop = false;
+    apu_pulse1_env_loop_length_halt = false;
     apu_pulse1_duty = 0;
     apu_pulse1_sweep_shift = 0;
     apu_pulse1_sweep_negate = false;
@@ -195,7 +209,7 @@ class NES {
     apu_pulse2_volume = 0;
     apu_pulse2_volume_init = 0;
     apu_pulse2_constant = false;
-    apu_pulse2_env_loop = false;
+    apu_pulse2_env_loop_length_halt = false;
     apu_pulse2_duty = 0;
     apu_pulse2_sweep_shift = 0;
     apu_pulse2_sweep_negate = false;
@@ -217,6 +231,18 @@ class NES {
     apu_triangle_timer = 0;
     apu_triangle_pos = 0;
 
+    apu_noise_volume = 0;
+    apu_noise_volume_init = 0;
+    apu_noise_constant = false;
+    apu_noise_env_loop_length_halt = false;
+    apu_noise_short_mode = false;
+    apu_noise_period_entry = 0;
+    apu_noise_length_load = 0;
+
+    apu_noise_timer = 0;
+    apu_noise_pos = 0;
+    apu_noise_lfsr = 32767;
+
     apu_pulse1_enable = false;
     apu_pulse2_enable = false;
     apu_triangle_enable = false;
@@ -234,12 +260,24 @@ class NES {
     apu_pulse2_env_start = false;
     apu_pulse2_env_div = 0;
 
-    apu_pulse1_sweep_muted = false;
+    apu_noise_env_start = false;
+    apu_noise_env_div = 0;
+
+
+    apu_pulse1_muted = false;
     apu_pulse1_sweep_div = 0;
     apu_pulse1_sweep_reload = false;
-    apu_pulse2_sweep_muted = false;
+    apu_pulse2_muted = false;
     apu_pulse2_sweep_div = 0;
     apu_pulse2_sweep_reload = false;
+
+    apu_pulse1_length_counter = 0;
+    apu_pulse2_length_counter = 0;
+    apu_triangle_length_counter = 0;
+    apu_noise_length_counter = 0;
+
+    apu_triangle_muted = false;
+    apu_noise_muted = false;
 
     controller_shift = new Uint8Array(8);
     controller_shift_pos = 0;

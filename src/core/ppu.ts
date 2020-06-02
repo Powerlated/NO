@@ -232,16 +232,18 @@ function ppu_shift_out(nes: NES) {
         let attribute_val = nes.ppu_attribute_shift[nes.ppu_attribute_shift_pos];
 
 
-        let index = 4 * (nes.ppu_pixel_x + (256 * nes.ppu_line));
 
-        if (pattern_val != 0) {
-            nes.ppu_img.data[index + 0] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][0];
-            nes.ppu_img.data[index + 1] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][1];
-            nes.ppu_img.data[index + 2] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][2];
-        } else {
-            nes.ppu_img.data[index + 0] = nes.ppu_universal_bg_col[0];
-            nes.ppu_img.data[index + 1] = nes.ppu_universal_bg_col[1];
-            nes.ppu_img.data[index + 2] = nes.ppu_universal_bg_col[2];
+        if (nes.ppu_pixel_x < 256) {
+            let index = 4 * (nes.ppu_pixel_x + (256 * nes.ppu_line));
+            if (pattern_val != 0) {
+                nes.ppu_img.data[index + 0] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][0];
+                nes.ppu_img.data[index + 1] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][1];
+                nes.ppu_img.data[index + 2] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][2];
+            } else {
+                nes.ppu_img.data[index + 0] = nes.ppu_universal_bg_col[0];
+                nes.ppu_img.data[index + 1] = nes.ppu_universal_bg_col[1];
+                nes.ppu_img.data[index + 2] = nes.ppu_universal_bg_col[2];
+            }
         }
 
         // nes.ppu_img.data[index + 0] = table_2bpp_to_8bpp[pattern_val];
@@ -267,8 +269,8 @@ function ppu_advance_fetcher(nes: NES) {
                     }
 
                 }
+                
                 if (nes.ppu_attribute_shift_pos == 0) {
-
                     for (let pixel = 0; pixel < 8; pixel++) {
                         nes.ppu_attribute_shift[nes.ppu_attribute_shift_pos] = nes.ppu_attribute_val;
                         nes.ppu_attribute_shift_pos++;
@@ -289,7 +291,7 @@ function ppu_advance_fetcher(nes: NES) {
         case 2:
             {
                 let attrtable_base = [0x23C0, 0x27C0, 0x2BC0, 0x2FC0][nes.ppu_nametable_base_id];
-                let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset >> 2));
+                let attrtable_byte = ppu_read_vram(nes, attrtable_base + nes.ppu_attribute_index_start + (nes.ppu_attribute_index_offset - 1 >> 2));
 
                 nes.ppu_attribute_index_offset++;
                 if (nes.ppu_attribute_index_offset > 31) {
@@ -356,12 +358,10 @@ function ppu_fetcher_reset(nes: NES) {
 }
 
 function ppu_advance(nes: NES, cycles: number) {
-    // Pre-render scanline
-    if (nes.ppu_line == 261) {
-        while (cycles > 0) {
-            cycles--;
-
-            if (nes.ppu_line_clock == 1) {
+    while (cycles--) {
+        // Pre-render scanline
+        if (nes.ppu_internal_line == 261) {
+            if (nes.ppu_internal_line_clock == 1) {
                 if (debug)
                     console.log("NMI flag clear");
 
@@ -370,65 +370,54 @@ function ppu_advance(nes: NES, cycles: number) {
                 nes.ppu_sprite0hit = false;
             }
 
-            else if (nes.ppu_line_clock == 320) ppu_fetcher_reset(nes);
-            else if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
+            else if (nes.ppu_internal_line_clock == 320) {
+                ppu_fetcher_reset(nes);
+            }
+            else if (nes.ppu_internal_line_clock >= 321 && nes.ppu_internal_line_clock <= 336) {
                 ppu_advance_fetcher(nes);
             }
 
-            else if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock = 0;
-                nes.ppu_line = 0;
+            else if (nes.ppu_internal_line_clock >= 341) {
+                nes.ppu_internal_line_clock = 0;
+                nes.ppu_internal_line = 0;
             }
-            nes.ppu_line_clock++;
-
         }
-    }
-    // Visible scanlines
-    else if (nes.ppu_line >= 0 && nes.ppu_line <= 239) {
-        while (cycles > 0) {
-            cycles--;
-
-            nes.ppu_line_clock++;
-
+        // Visible scanlines
+        else if (nes.ppu_internal_line >= 0 && nes.ppu_internal_line <= 239) {
             // TODO: Remove mock sprite 0
-            if (nes.ppu_line == 32 && nes.ppu_line_clock == 1) nes.ppu_sprite0hit = true;
+            if (nes.ppu_internal_line == 31 && nes.ppu_internal_line_clock == 1) nes.ppu_sprite0hit = true;
 
-            if (nes.ppu_line_clock > 0 && nes.ppu_line_clock < 257) {
+            if (nes.ppu_internal_line_clock > 0 && nes.ppu_internal_line_clock < 257) {
                 ppu_advance_fetcher(nes);
                 ppu_shift_out(nes);
             }
 
-            else if (nes.ppu_line_clock == 320) {
+            else if (nes.ppu_internal_line_clock == 320) {
                 nes.ppu_line++;
                 ppu_fetcher_reset(nes);
             }
-            else if (nes.ppu_line_clock >= 321 && nes.ppu_line_clock <= 336) {
+            else if (nes.ppu_internal_line_clock >= 321 && nes.ppu_internal_line_clock <= 336) {
                 ppu_advance_fetcher(nes);
             }
 
-            else if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock = 0;
+            else if (nes.ppu_internal_line_clock >= 341) {
+                nes.ppu_internal_line_clock = 0;
+                nes.ppu_internal_line++;
+            }
+        }
+        // Post-render scanline
+        else if (nes.ppu_internal_line == 240) {
+            nes.ppu_internal_line_clock++;
+            if (nes.ppu_internal_line_clock >= 341) {
+                nes.ppu_line = 0;
 
+                nes.ppu_internal_line_clock = 0;
+                nes.ppu_internal_line++;
             }
         }
-    }
-    // Post-render scanline
-    else if (nes.ppu_line == 240) {
-        while (cycles > 0) {
-            cycles--;
-            nes.ppu_line_clock++;
-            if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock = 0;
-                nes.ppu_line++;
-            }
-        }
-    }
-    // Vblank
-    else if (nes.ppu_line >= 241 && nes.ppu_line <= 260) {
-        while (cycles > 0) {
-            cycles--;
-            nes.ppu_line_clock++;
-            if (nes.ppu_line == 241 && nes.ppu_line_clock == 1) {
+        // Vblank
+        else if (nes.ppu_internal_line >= 241 && nes.ppu_internal_line <= 260) {
+            if (nes.ppu_internal_line == 241 && nes.ppu_internal_line_clock == 1) {
                 // console.log("Vblank hit");
                 nes.ppu_nmi_occurred = true;
                 ppu_check_nmi(nes);
@@ -436,11 +425,14 @@ function ppu_advance(nes: NES, cycles: number) {
                 // Draw the image here
                 ppu_draw(nes);
             }
-            else if (nes.ppu_line_clock >= 341) {
-                nes.ppu_line_clock = 0;
-                nes.ppu_line++;
+            else if (nes.ppu_internal_line_clock >= 341) {
+                nes.ppu_internal_line_clock = 0;
+                nes.ppu_internal_line++;
             }
         }
+
+        nes.ppu_internal_line_clock++;
+
     }
 }
 
