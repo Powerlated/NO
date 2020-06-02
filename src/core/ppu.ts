@@ -321,20 +321,19 @@ function ppu_advance_fetcher(nes: NES) {
     nes.ppu_fetcher_state &= 7;
 
     let fine_x = (nes.ppu_ppuscroll_x & 7) ^ 7;
-    let pattern_val = (bit_test(nes.ppu_pattern_shift_upper, fine_x + 8) ? 2 : 0) + (bit_test(nes.ppu_pattern_shift_lower, fine_x + 8) ? 1 : 0);
+    let bg_pattern_val = (bit_test(nes.ppu_pattern_shift_upper, fine_x + 8) ? 2 : 0) + (bit_test(nes.ppu_pattern_shift_lower, fine_x + 8) ? 1 : 0);
     let attribute_val = (bit_test(nes.ppu_attribute_shift_upper, fine_x) ? 2 : 0) + (bit_test(nes.ppu_attribute_shift_lower, fine_x) ? 1 : 0);
 
     if (nes.ppu_image_x >= 0) {
-        if (pattern_val != 0) {
-            nes.ppu_img.data[nes.ppu_image_index + 0] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][0];
-            nes.ppu_img.data[nes.ppu_image_index + 1] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][1];
-            nes.ppu_img.data[nes.ppu_image_index + 2] = nes.ppu_bg_palette[attribute_val][pattern_val - 1][2];
+        if (bg_pattern_val != 0) {
+            nes.ppu_img.data[nes.ppu_image_index + 0] = nes.ppu_bg_palette[attribute_val][bg_pattern_val - 1][0];
+            nes.ppu_img.data[nes.ppu_image_index + 1] = nes.ppu_bg_palette[attribute_val][bg_pattern_val - 1][1];
+            nes.ppu_img.data[nes.ppu_image_index + 2] = nes.ppu_bg_palette[attribute_val][bg_pattern_val - 1][2];
         } else {
             nes.ppu_img.data[nes.ppu_image_index + 0] = nes.ppu_universal_bg_col[0];
             nes.ppu_img.data[nes.ppu_image_index + 1] = nes.ppu_universal_bg_col[1];
             nes.ppu_img.data[nes.ppu_image_index + 2] = nes.ppu_universal_bg_col[2];
         }
-
 
         for (let s = 0; s < 8; s++) {
             const lower = nes.ppu_sprite_pattern_shift_lower[s];
@@ -343,30 +342,33 @@ function ppu_advance_fetcher(nes: NES) {
             const attr = nes.ppu_sprite_attrs[s];
 
             const palette = attr & 0b11;
+            const behind_bg = bit_test(attr, 5);
 
             const xflip = bit_test(attr, 6);
 
             if (nes.ppu_image_x >= xpos && nes.ppu_image_x < xpos + 8) {
-                let pattern_val: number;
+                let obj_pattern_val: number;
 
                 if (!xflip) {
-                    pattern_val = (bit_test(upper, 7) ? 2 : 0) + (bit_test(lower, 7) ? 1 : 0);
+                    obj_pattern_val = (bit_test(upper, 7) ? 2 : 0) + (bit_test(lower, 7) ? 1 : 0);
                     nes.ppu_sprite_pattern_shift_lower[s] <<= 1;
                     nes.ppu_sprite_pattern_shift_upper[s] <<= 1;
                 } else {
-                    pattern_val = (bit_test(upper, 0) ? 2 : 0) + (bit_test(lower, 0) ? 1 : 0);
+                    obj_pattern_val = (bit_test(upper, 0) ? 2 : 0) + (bit_test(lower, 0) ? 1 : 0);
                     nes.ppu_sprite_pattern_shift_lower[s] >>= 1;
                     nes.ppu_sprite_pattern_shift_upper[s] >>= 1;
                 }
 
-                if (pattern_val != 0) {
-                    if (s == 0 && nes.ppu_sprite0_on) {
-                        nes.ppu_sprite0hit = true;
-                    }
+                if ((behind_bg && bg_pattern_val == 0) || !behind_bg) {
+                    if (obj_pattern_val != 0) {
+                        if (s == 0 && nes.ppu_sprite0_on) {
+                            nes.ppu_sprite0hit = true;
+                        }
 
-                    nes.ppu_img.data[nes.ppu_image_index + 0] = nes.ppu_obj_palette[palette][pattern_val - 1][0];
-                    nes.ppu_img.data[nes.ppu_image_index + 1] = nes.ppu_obj_palette[palette][pattern_val - 1][1];
-                    nes.ppu_img.data[nes.ppu_image_index + 2] = nes.ppu_obj_palette[palette][pattern_val - 1][2];
+                        nes.ppu_img.data[nes.ppu_image_index + 0] = nes.ppu_obj_palette[palette][obj_pattern_val - 1][0];
+                        nes.ppu_img.data[nes.ppu_image_index + 1] = nes.ppu_obj_palette[palette][obj_pattern_val - 1][1];
+                        nes.ppu_img.data[nes.ppu_image_index + 2] = nes.ppu_obj_palette[palette][obj_pattern_val - 1][2];
+                    }
                 }
             }
         }
