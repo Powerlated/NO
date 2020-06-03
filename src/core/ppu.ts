@@ -324,8 +324,10 @@ function ppu_advance_fetcher(nes: NES) {
     nes.ppu_fetcher_state &= 7;
 
     let fine_x = (nes.ppu_ppuscroll_x & 7) ^ 7;
-    let bg_pattern_val = (bit_test(nes.ppu_pattern_shift_upper, fine_x + 8) ? 2 : 0) + (bit_test(nes.ppu_pattern_shift_lower, fine_x + 8) ? 1 : 0);
-    let attribute_val = (bit_test(nes.ppu_attribute_shift_upper, fine_x) ? 2 : 0) + (bit_test(nes.ppu_attribute_shift_lower, fine_x) ? 1 : 0);
+    let bg_pattern_val = (((nes.ppu_pattern_shift_upper >> fine_x + 8) & 0b1) << 1) | ((nes.ppu_pattern_shift_lower >> fine_x + 8) & 0b1);
+    let attribute_val = (((nes.ppu_attribute_shift_upper >> fine_x) & 0b1) << 1) | ((nes.ppu_attribute_shift_lower >> fine_x) & 0b1);
+    // let attribute_val = (bit_test(nes.ppu_attribute_shift_upper, fine_x) ? 2 : 0) + (bit_test(nes.ppu_attribute_shift_lower, fine_x) ? 1 : 0);
+
 
     if (nes.ppu_image_x >= 0) {
         if (bg_pattern_val != 0) {
@@ -353,11 +355,11 @@ function ppu_advance_fetcher(nes: NES) {
                 let obj_pattern_val: number;
 
                 if (!xflip) {
-                    obj_pattern_val = (bit_test(upper, 7) ? 2 : 0) + (bit_test(lower, 7) ? 1 : 0);
+                    obj_pattern_val = ((upper & BIT_7) >> 6) | ((lower & BIT_7) >> 7);
                     nes.ppu_sprite_pattern_shift_lower[s] <<= 1;
                     nes.ppu_sprite_pattern_shift_upper[s] <<= 1;
                 } else {
-                    obj_pattern_val = (bit_test(upper, 0) ? 2 : 0) + (bit_test(lower, 0) ? 1 : 0);
+                    obj_pattern_val = ((upper & BIT_0) << 1) | ((lower & BIT_0) << 0);
                     nes.ppu_sprite_pattern_shift_lower[s] >>= 1;
                     nes.ppu_sprite_pattern_shift_upper[s] >>= 1;
                 }
@@ -391,8 +393,8 @@ function ppu_advance_fetcher(nes: NES) {
     nes.ppu_attribute_shift_lower <<= 1;
     nes.ppu_attribute_shift_upper <<= 1;
 
-    nes.ppu_attribute_shift_lower |= bit_test(nes.ppu_attribute_current, 0) ? 1 : 0;
-    nes.ppu_attribute_shift_upper |= bit_test(nes.ppu_attribute_current, 1) ? 1 : 0;
+    nes.ppu_attribute_shift_lower |= (nes.ppu_attribute_current >> 0) & 1;
+    nes.ppu_attribute_shift_upper |= (nes.ppu_attribute_current >> 1) & 1;
 }
 
 function ppu_fetcher_reset(nes: NES) {
