@@ -25,7 +25,7 @@ function apu_half_frame(nes: NES) {
     if (nes.apu_pulse1_sweep_div <= 0) {
         if (nes.apu_pulse1_sweep_enabled) {
 
-            let period = ((nes.apu_pulse1_timer_high << 8) | nes.apu_pulse1_timer_low);
+            let period = nes.apu_pulse1_period;
             let change = period >> nes.apu_pulse1_sweep_shift;
             // Pulse 1 uses one's complement for negate, so extra -1
             if (nes.apu_pulse1_sweep_negate) {
@@ -38,8 +38,7 @@ function apu_half_frame(nes: NES) {
             nes.apu_pulse1_sweep_muted = new_period > 0x7FF;
 
             if (!nes.apu_pulse1_sweep_muted) {
-                nes.apu_pulse1_timer_high = (new_period >> 8) & 0b111;
-                nes.apu_pulse1_timer_low = (new_period >> 0) & 0xFF;
+                nes.apu_pulse1_period = new_period;
             }
         }
     }
@@ -51,7 +50,7 @@ function apu_half_frame(nes: NES) {
     }
     if (nes.apu_pulse2_sweep_div <= 0) {
         if (nes.apu_pulse2_sweep_enabled) {
-            let period = ((nes.apu_pulse2_timer_high << 8) | nes.apu_pulse2_timer_low);
+            let period = nes.apu_pulse2_period;
             let change = period >> nes.apu_pulse2_sweep_shift;
             if (nes.apu_pulse2_sweep_negate) {
                 change *= -1;
@@ -62,8 +61,7 @@ function apu_half_frame(nes: NES) {
             nes.apu_pulse2_sweep_muted = new_period > 0x7FF;
 
             if (!nes.apu_pulse2_sweep_muted) {
-                nes.apu_pulse2_timer_high = (new_period >> 8) & 0b111;
-                nes.apu_pulse2_timer_low = (new_period >> 0) & 0xFF;
+                nes.apu_pulse2_period = new_period;
             }
         }
     }
@@ -177,8 +175,7 @@ function apu_advance(nes: NES, cycles: number) {
 
         if (nes.apu_pulse1_timer <= 0) {
             // When the timer hits zero, advance the position and reload the timer
-            nes.apu_pulse1_timer += 2 * ((nes.apu_pulse1_timer_high << 8) | nes.apu_pulse1_timer_low);
-
+            nes.apu_pulse1_timer += 2 * nes.apu_pulse1_period;
             nes.apu_pulse1_pos--;
             nes.apu_pulse1_pos &= 7;
         }
@@ -188,7 +185,7 @@ function apu_advance(nes: NES, cycles: number) {
 
         if (nes.apu_pulse2_timer <= 0) {
             // When the timer hits zero, advance the position and reload the timer
-            nes.apu_pulse2_timer += 2 * ((nes.apu_pulse2_timer_high << 8) | nes.apu_pulse2_timer_low);
+            nes.apu_pulse2_timer += 2 * nes.apu_pulse2_period;
 
             nes.apu_pulse2_pos--;
             nes.apu_pulse2_pos &= 7;
@@ -199,7 +196,7 @@ function apu_advance(nes: NES, cycles: number) {
 
         if (nes.apu_triangle_timer <= 0) {
             // When the timer hits zero, advance the position and reload the timer
-            nes.apu_triangle_timer += ((nes.apu_triangle_timer_high << 8) | nes.apu_triangle_timer_low);
+            nes.apu_triangle_timer += nes.apu_triangle_period;
 
             if (nes.apu_triangle_length_counter != 0 && nes.apu_triangle_counter != 0) {
                 nes.apu_triangle_pos--;
@@ -299,14 +296,14 @@ function apu_advance(nes: NES, cycles: number) {
         nes.apu_sample_timer -= 1789773 / SAMPLE_RATE;
 
         let sample = 0;
-        if (nes.apu_pulse1_enable && nes.apu_pulse1_length_counter != 0 && !nes.apu_pulse1_sweep_muted) {
+        if (nes.apu_pulse1_enable && nes.apu_pulse1_length_counter != 0) {
             if (nes.apu_pulse1_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume_init / 15);
             } else {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume / 15);
             }
         }
-        if (nes.apu_pulse2_enable && nes.apu_pulse2_length_counter != 0 && !nes.apu_pulse2_sweep_muted) {
+        if (nes.apu_pulse2_enable && nes.apu_pulse2_length_counter != 0) {
             if (nes.apu_pulse2_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse2_duty][nes.apu_pulse2_pos] * (nes.apu_pulse2_volume_init / 15);
             } else {
@@ -351,10 +348,13 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_pulse1_sweep_reload = true;
             break;
         case 0x4002:
-            nes.apu_pulse1_timer_low = val;
+            nes.apu_pulse1_period &= 0x700;
+            nes.apu_pulse1_period |= val;
             break;
         case 0x4003:
-            nes.apu_pulse1_timer_high = val & 0b111;
+            nes.apu_pulse1_period &= 0x0FF;
+            nes.apu_pulse1_period |= ((val & 0b111) << 8);
+
             nes.apu_pulse1_length_load = (val >> 3) & 0b11111;
 
             if (!nes.apu_pulse1_env_loop_length_halt)
@@ -379,10 +379,13 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_pulse2_sweep_reload = true;
             break;
         case 0x4006:
-            nes.apu_pulse2_timer_low = val;
+            nes.apu_pulse2_period &= 0x700;
+            nes.apu_pulse2_period |= val;
             break;
         case 0x4007:
-            nes.apu_pulse2_timer_high = val & 0b111;
+            nes.apu_pulse2_period &= 0x0FF;
+            nes.apu_pulse2_period |= ((val & 0b111) << 8);
+
             nes.apu_pulse2_length_load = (val >> 3) & 0b11111;
 
             if (!nes.apu_pulse2_env_loop_length_halt)
@@ -397,10 +400,12 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_triangle_control = bit_test(val, 7);
             break;
         case 0x400A:
-            nes.apu_triangle_timer_low = val;
+            nes.apu_triangle_period &= 0x700;
+            nes.apu_triangle_period |= val;
             break;
         case 0x400B:
-            nes.apu_triangle_timer_high = val & 0b111;
+            nes.apu_triangle_period &= 0x0FF;
+            nes.apu_triangle_period |= ((val & 0b111) << 8);
             nes.apu_triangle_length_load = (val >> 3) & 0b11111;
 
             if (!nes.apu_triangle_control)

@@ -213,8 +213,7 @@ class NES {
     apu_pulse1_sweep_negate = false;
     apu_pulse1_sweep_divider_period = 0;
     apu_pulse1_sweep_enabled = false;
-    apu_pulse1_timer_low = 0;
-    apu_pulse1_timer_high = 0;
+    apu_pulse1_period = 0;
     apu_pulse1_length_load = 0;
 
     apu_pulse1_timer = 0;
@@ -229,8 +228,7 @@ class NES {
     apu_pulse2_sweep_negate = false;
     apu_pulse2_sweep_divider_period = 0;
     apu_pulse2_sweep_enabled = false;
-    apu_pulse2_timer_low = 0;
-    apu_pulse2_timer_high = 0;
+    apu_pulse2_period = 0;
     apu_pulse2_length_load = 0;
 
     apu_pulse2_timer = 0;
@@ -240,8 +238,7 @@ class NES {
     apu_triangle_counter_period = 0;
     apu_triangle_counter = 0;
     apu_triangle_control = false;
-    apu_triangle_timer_low = 0;
-    apu_triangle_timer_high = 0;
+    apu_triangle_period = 0;
     apu_triangle_length_load = 0;
 
     apu_triangle_timer = 0;
