@@ -123,6 +123,7 @@ class NES {
     ppu_master_slave_sel = false;
     ppu_enable_nmi = false;
 
+    ppu_mode_state = 0;
     ppu_line = 0;
     ppu_internal_line = 0;
     ppu_internal_line_clock = 0;
@@ -197,7 +198,7 @@ class NES {
 
     ppu_prepalette = new Uint8Array(256);
 
-    apu_buffer = new Float32Array(2048);
+    apu_buffer = new Float32Array(1024);
     apu_buffer_pos = 0;
     apu_sample_timer = 0;
 
@@ -235,7 +236,9 @@ class NES {
     apu_pulse2_timer = 0;
     apu_pulse2_pos = 0;
 
-    apu_triangle_counter_reload = 0;
+    apu_triangle_counter_reload = false;
+    apu_triangle_counter_period = 0;
+    apu_triangle_counter = 0;
     apu_triangle_control = false;
     apu_triangle_timer_low = 0;
     apu_triangle_timer_high = 0;
@@ -277,10 +280,10 @@ class NES {
     apu_noise_env_div = 0;
 
 
-    apu_pulse1_muted = false;
+    apu_pulse1_sweep_muted = false;
     apu_pulse1_sweep_div = 0;
     apu_pulse1_sweep_reload = false;
-    apu_pulse2_muted = false;
+    apu_pulse2_sweep_muted = false;
     apu_pulse2_sweep_div = 0;
     apu_pulse2_sweep_reload = false;
 
@@ -288,9 +291,6 @@ class NES {
     apu_pulse2_length_counter = 0;
     apu_triangle_length_counter = 0;
     apu_noise_length_counter = 0;
-
-    apu_triangle_muted = false;
-    apu_noise_muted = false;
 
     controller_shift = new Uint8Array(8);
     controller_shift_pos = 0;

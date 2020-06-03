@@ -22,10 +22,8 @@ const NOISE_PERIOD = Uint16Array.of(
 const player = new SoundPlayer();
 
 function apu_half_frame(nes: NES) {
-    if (nes.apu_pulse1_sweep_enabled) {
-        if (nes.apu_pulse1_sweep_div <= 0 || nes.apu_pulse1_sweep_reload) {
-            nes.apu_pulse1_sweep_reload = false;
-            nes.apu_pulse1_sweep_div = nes.apu_pulse1_sweep_divider_period;
+    if (nes.apu_pulse1_sweep_div <= 0) {
+        if (nes.apu_pulse1_sweep_enabled) {
 
             let period = ((nes.apu_pulse1_timer_high << 8) | nes.apu_pulse1_timer_low);
             let change = period >> nes.apu_pulse1_sweep_shift;
@@ -37,21 +35,22 @@ function apu_half_frame(nes: NES) {
 
             let new_period = change + period;
 
-            if (new_period > 0x7FF) {
-                nes.apu_pulse1_muted = true;
-            }
+            nes.apu_pulse1_sweep_muted = new_period > 0x7FF;
 
-            nes.apu_pulse1_timer_high = (new_period >> 8) & 0b111;
-            nes.apu_pulse1_timer_low = (new_period >> 0) & 0xFF;
-        } else {
-            nes.apu_pulse1_sweep_div--;
+            if (!nes.apu_pulse1_sweep_muted) {
+                nes.apu_pulse1_timer_high = (new_period >> 8) & 0b111;
+                nes.apu_pulse1_timer_low = (new_period >> 0) & 0xFF;
+            }
         }
     }
-    if (nes.apu_pulse2_sweep_enabled) {
-        if (nes.apu_pulse2_sweep_div <= 0 || nes.apu_pulse2_sweep_reload) {
-            nes.apu_pulse2_sweep_reload = false;
-            nes.apu_pulse2_sweep_div = nes.apu_pulse2_sweep_divider_period;
-
+    if (nes.apu_pulse1_sweep_div <= 0 || nes.apu_pulse1_sweep_reload) {
+        nes.apu_pulse1_sweep_reload = false;
+        nes.apu_pulse1_sweep_div = nes.apu_pulse1_sweep_divider_period;
+    } else {
+        nes.apu_pulse1_sweep_div--;
+    }
+    if (nes.apu_pulse2_sweep_div <= 0) {
+        if (nes.apu_pulse2_sweep_enabled) {
             let period = ((nes.apu_pulse2_timer_high << 8) | nes.apu_pulse2_timer_low);
             let change = period >> nes.apu_pulse2_sweep_shift;
             if (nes.apu_pulse2_sweep_negate) {
@@ -60,16 +59,19 @@ function apu_half_frame(nes: NES) {
 
             let new_period = change + period;
 
-            if (new_period > 0x7FF) {
-                nes.apu_pulse2_muted = true;
+            nes.apu_pulse2_sweep_muted = new_period > 0x7FF;
+
+            if (!nes.apu_pulse2_sweep_muted) {
+                nes.apu_pulse2_timer_high = (new_period >> 8) & 0b111;
+                nes.apu_pulse2_timer_low = (new_period >> 0) & 0xFF;
             }
-
-            nes.apu_pulse2_timer_high = (new_period >> 8) & 0b111;
-            nes.apu_pulse2_timer_low = (new_period >> 0) & 0xFF;
-
-        } else {
-            nes.apu_pulse2_sweep_div--;
         }
+    }
+    if (nes.apu_pulse2_sweep_div <= 0 || nes.apu_pulse2_sweep_reload) {
+        nes.apu_pulse2_sweep_reload = false;
+        nes.apu_pulse2_sweep_div = nes.apu_pulse2_sweep_divider_period;
+    } else {
+        nes.apu_pulse2_sweep_div--;
     }
 
     if (!nes.apu_pulse1_env_loop_length_halt) {
@@ -297,14 +299,14 @@ function apu_advance(nes: NES, cycles: number) {
         nes.apu_sample_timer -= 1789773 / SAMPLE_RATE;
 
         let sample = 0;
-        if (nes.apu_pulse1_enable && nes.apu_pulse1_length_counter != 0) {
+        if (nes.apu_pulse1_enable && nes.apu_pulse1_length_counter != 0 && !nes.apu_pulse1_sweep_muted) {
             if (nes.apu_pulse1_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume_init / 15);
             } else {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse1_duty][nes.apu_pulse1_pos] * (nes.apu_pulse1_volume / 15);
             }
         }
-        if (nes.apu_pulse2_enable && nes.apu_pulse2_length_counter != 0) {
+        if (nes.apu_pulse2_enable && nes.apu_pulse2_length_counter != 0 && !nes.apu_pulse2_sweep_muted) {
             if (nes.apu_pulse2_constant) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse2_duty][nes.apu_pulse2_pos] * (nes.apu_pulse2_volume_init / 15);
             } else {
