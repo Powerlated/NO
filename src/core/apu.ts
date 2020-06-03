@@ -37,9 +37,9 @@ function apu_half_frame(nes: NES) {
 
             let new_period = change + period;
 
-            // if (new_period > 0x7FF) {
-            //     nes.apu_pulse1_muted = true;
-            // }
+            if (new_period > 0x7FF) {
+                nes.apu_pulse1_muted = true;
+            }
 
             nes.apu_pulse1_timer_high = (new_period >> 8) & 0b111;
             nes.apu_pulse1_timer_low = (new_period >> 0) & 0xFF;
@@ -60,9 +60,9 @@ function apu_half_frame(nes: NES) {
 
             let new_period = change + period;
 
-            // if (new_period > 0x7FF) {
-            //     nes.apu_pulse2_muted = true;
-            // }
+            if (new_period > 0x7FF) {
+                nes.apu_pulse2_muted = true;
+            }
 
             nes.apu_pulse2_timer_high = (new_period >> 8) & 0b111;
             nes.apu_pulse2_timer_low = (new_period >> 0) & 0xFF;
@@ -156,6 +156,16 @@ function apu_quarter_frame(nes: NES) {
 
         nes.apu_noise_env_div--;
     }
+
+    if (nes.apu_triangle_counter_reload) {
+        nes.apu_triangle_counter_reload = false;
+
+        nes.apu_triangle_counter = nes.apu_triangle_counter_period;
+    } else {
+        if (nes.apu_triangle_counter > 0) {
+            nes.apu_triangle_counter--;
+        }
+    }
 }
 
 // Counting in CPU cycles
@@ -189,8 +199,10 @@ function apu_advance(nes: NES, cycles: number) {
             // When the timer hits zero, advance the position and reload the timer
             nes.apu_triangle_timer += ((nes.apu_triangle_timer_high << 8) | nes.apu_triangle_timer_low);
 
-            nes.apu_triangle_pos--;
-            nes.apu_triangle_pos &= 31;
+            if (nes.apu_triangle_length_counter != 0 && nes.apu_triangle_counter != 0) {
+                nes.apu_triangle_pos--;
+                nes.apu_triangle_pos &= 31;
+            }
         }
     }
 
@@ -299,9 +311,7 @@ function apu_advance(nes: NES, cycles: number) {
                 sample += APU_DUTY_CYCLES[nes.apu_pulse2_duty][nes.apu_pulse2_pos] * (nes.apu_pulse2_volume / 15);
             }
         }
-        if (nes.apu_triangle_enable && nes.apu_triangle_length_counter != 0) {
-            sample += TRIANGLE_SEQ[nes.apu_triangle_pos] / 15;
-        }
+        sample += TRIANGLE_SEQ[nes.apu_triangle_pos] / 15;
         if (nes.apu_noise_enable && nes.apu_noise_length_counter != 0) {
             if (nes.apu_noise_constant) {
                 sample += (nes.apu_noise_lfsr & 1) * (nes.apu_noise_volume_init / 15);
@@ -381,7 +391,7 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             break;
 
         case 0x4008:
-            nes.apu_triangle_counter_reload = val & 0b1111111;
+            nes.apu_triangle_counter_period = val & 0b1111111;
             nes.apu_triangle_control = bit_test(val, 7);
             break;
         case 0x400A:
@@ -393,6 +403,8 @@ function apu_io_write(nes: NES, addr: number, val: number) {
 
             if (!nes.apu_triangle_control)
                 nes.apu_triangle_length_counter = LENGTH[nes.apu_triangle_length_load & 0x1F];
+
+            nes.apu_triangle_counter_reload = true;
             break;
 
         case 0x400C:
@@ -439,12 +451,13 @@ function apu_io_write(nes: NES, addr: number, val: number) {
             nes.apu_sequencer_5step = bit_test(val, 7);
             nes.apu_sequencer_no_interrupt = bit_test(val, 6);
 
-            // nes.apu_sequencer_step = 0;
+            nes.apu_sequencer_step = 0;
+            nes.apu_sequencer_clock = 0;
 
-            // if (nes.apu_sequencer_5step) {
-            //     apu_quarter_frame(nes);
-            //     apu_half_frame(nes);
-            // }
+            if (nes.apu_sequencer_5step) {
+                apu_quarter_frame(nes);
+                apu_half_frame(nes);
+            }
             break;
     }
 }
